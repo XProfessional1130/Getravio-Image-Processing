@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { useAuth } from "./context/AuthContext";
 import Login from "./components/Login";
+import Register from "./components/Register";
 import ImageComparison from "./components/ImageComparison";
 
 interface Job {
@@ -14,21 +16,34 @@ interface Job {
   simulation2?: string;
 }
 
+type AuthView = 'login' | 'register';
+
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const { isAuthenticated, isLoading, login, register, logout } = useAuth();
+  const [authView, setAuthView] = useState<AuthView>('login');
   const [currentJob, setCurrentJob] = useState<Job | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
-  const handleLogin = (credentials: { email: string; password: string }) => {
-    // Phase 0: Simple authentication (backend will validate)
-    setIsAuthenticated(true);
+  const handleLogin = async (credentials: { email: string; password: string }) => {
+    await login(credentials);
+  };
+
+  const handleRegister = async (data: {
+    username: string;
+    email: string;
+    password: string;
+    first_name: string;
+    last_name: string;
+  }) => {
+    await register(data);
   };
 
   const handleLogout = () => {
-    setIsAuthenticated(false);
+    logout();
     setCurrentJob(null);
     setUploadedFile(null);
+    setJobs([]);
   };
 
   const handleImageUpload = (file: File) => {
@@ -70,12 +85,43 @@ function App() {
 
     setJobs([newJob, ...jobs]);
     setCurrentJob(newJob);
+
+    // TODO: Send to backend API
+    // jobAPI.createJob(formData);
   };
 
-  if (!isAuthenticated) {
-    return <Login onLogin={handleLogin} />;
+  // Show loading spinner while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white via-blue-50 to-purple-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-blue-600 font-semibold">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
+  // Show login/register if not authenticated
+  if (!isAuthenticated) {
+    if (authView === 'register') {
+      return (
+        <Register
+          onRegister={handleRegister}
+          onSwitchToLogin={() => setAuthView('login')}
+        />
+      );
+    }
+
+    return (
+      <Login
+        onLogin={handleLogin}
+        onSwitchToRegister={() => setAuthView('register')}
+      />
+    );
+  }
+
+  // Main app view (authenticated)
   return (
     <div className="min-h-screen relative">
       {/* Background Image */}

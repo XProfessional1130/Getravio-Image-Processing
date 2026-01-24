@@ -1,16 +1,28 @@
 import { useState, FormEvent } from 'react';
 
 interface LoginProps {
-  onLogin: (credentials: { email: string; password: string }) => void;
+  onLogin: (credentials: { email: string; password: string }) => Promise<void>;
+  onSwitchToRegister: () => void;
 }
 
-function Login({ onLogin }: LoginProps) {
+function Login({ onLogin, onSwitchToRegister }: LoginProps) {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    onLogin({ email, password });
+    setError('');
+    setIsLoading(true);
+
+    try {
+      await onLogin({ email, password });
+    } catch (err: any) {
+      setError(err.message || 'Invalid email or password');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -36,6 +48,13 @@ function Login({ onLogin }: LoginProps) {
           </h1>
           <p className="text-xs sm:text-sm text-blue-900/60 font-medium">AI Body Simulation Platform</p>
         </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
           <div>
             <label className="block text-xs font-bold text-blue-900/70 tracking-wide mb-2">EMAIL</label>
@@ -61,10 +80,24 @@ function Login({ onLogin }: LoginProps) {
           </div>
           <button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white px-5 sm:px-6 py-3.5 sm:py-4 rounded-lg sm:rounded-xl transition-all duration-200 font-bold text-sm sm:text-base shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 mt-6 sm:mt-8"
+            disabled={isLoading}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-5 sm:px-6 py-3.5 sm:py-4 rounded-lg sm:rounded-xl transition-all duration-200 font-bold text-sm sm:text-base shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 mt-6 sm:mt-8"
           >
-            Sign In
+            {isLoading ? 'Signing In...' : 'Sign In'}
           </button>
+
+          <div className="text-center mt-4">
+            <p className="text-xs sm:text-sm text-blue-900/60">
+              Don't have an account?{' '}
+              <button
+                type="button"
+                onClick={onSwitchToRegister}
+                className="text-blue-600 hover:text-blue-700 font-semibold"
+              >
+                Create Account
+              </button>
+            </p>
+          </div>
         </form>
       </div>
     </div>

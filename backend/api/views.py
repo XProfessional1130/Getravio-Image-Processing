@@ -41,6 +41,51 @@ def login_view(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_view(request):
+    """
+    Register new user
+    POST /api/auth/register
+    """
+    username = request.data.get('username')
+    email = request.data.get('email')
+    password = request.data.get('password')
+    first_name = request.data.get('first_name', '')
+    last_name = request.data.get('last_name', '')
+
+    # Validation
+    if not username or not email or not password:
+        return Response({
+            'error': 'Username, email, and password are required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Check if user already exists
+    if User.objects.filter(username=username).exists():
+        return Response({
+            'error': 'Username already exists'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    if User.objects.filter(email=email).exists():
+        return Response({
+            'error': 'Email already exists'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Create user
+    user = User.objects.create_user(
+        username=username,
+        email=email,
+        password=password,
+        first_name=first_name,
+        last_name=last_name
+    )
+
+    return Response({
+        'message': 'Registration successful',
+        'user': UserSerializer(user).data
+    }, status=status.HTTP_201_CREATED)
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def current_user_view(request):
