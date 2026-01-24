@@ -89,7 +89,7 @@ function ImageComparison({ job, onHandleJobSubmit, onImageUpload }: ImageCompari
           </div>
 
           <div className="space-y-2 sm:space-y-3">
-            {showLabels && <h3 className="text-xs sm:text-sm font-bold text-blue-900/80 tracking-wide">SIMULATION 1</h3>}
+            {showLabels && <h3 className="text-xs sm:text-sm font-bold text-blue-900/80 tracking-wide">REAR</h3>}
             <div className="w-full aspect-[3/4] bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-xl sm:rounded-2xl border border-blue-100/50 flex items-center justify-center overflow-hidden shadow-md shadow-blue-900/5 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10">
               {job && job.simulation1 ? (
                 <img src={job.simulation1} alt="Simulation 1" className="w-full h-full object-cover" />
@@ -103,7 +103,7 @@ function ImageComparison({ job, onHandleJobSubmit, onImageUpload }: ImageCompari
           </div>
 
           <div className="space-y-2 sm:space-y-3">
-            {showLabels && <h3 className="text-xs sm:text-sm font-bold text-blue-900/80 tracking-wide">SIMULATION 2</h3>}
+            {showLabels && <h3 className="text-xs sm:text-sm font-bold text-blue-900/80 tracking-wide">SIDE</h3>}
             <div className="w-full aspect-[3/4] bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-xl sm:rounded-2xl border border-blue-100/50 flex items-center justify-center overflow-hidden shadow-md shadow-blue-900/5 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10">
               {job && job.simulation2 ? (
                 <img src={job.simulation2} alt="Simulation 2" className="w-full h-full object-cover" />
