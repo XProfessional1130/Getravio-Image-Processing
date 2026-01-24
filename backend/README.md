@@ -14,7 +14,7 @@ Simple Django REST API backend for body simulation processing.
 
 - **Django 5.0** - Web framework
 - **Django REST Framework** - REST API
-- **SQLite** - Database (Phase 0)
+- **PostgreSQL** - Database
 - **Pillow** - Image processing
 - **CORS Headers** - Frontend integration
 
@@ -40,26 +40,51 @@ pip install -r requirements.txt
 
 ### 3. Environment Variables
 
-Copy `.env.example` to `.env` and update:
+Copy `.env.example` to `.env` and update with your PostgreSQL credentials:
 
 ```bash
 cp .env.example .env
 ```
 
-### 4. Database Setup
+Update `.env` file:
+```env
+DB_NAME=getravio
+DB_USER=postgres
+DB_PASSWORD=your_postgres_password
+DB_HOST=localhost
+DB_PORT=5432
+```
+
+### 4. PostgreSQL Database Setup
+
+**Create PostgreSQL database:**
+```bash
+# Start PostgreSQL service (Windows)
+net start postgresql-x64-17
+
+# Create database
+psql -U postgres -c "CREATE DATABASE getravio;"
+```
+
+**See [DATABASE_SETUP.md](DATABASE_SETUP.md) for detailed instructions.**
+
+### 5. Run Migrations
 
 ```bash
-python manage.py makemigrations
 python manage.py migrate
 ```
 
-### 5. Create Superuser
+### 6. Create Test Users
 
 ```bash
-python manage.py createsuperuser
+python manage.py shell < create_test_data.py
 ```
 
-### 6. Run Development Server
+This creates:
+- Test user: `test@example.com` / `testpass123`
+- Admin user: `admin@example.com` / `admin123`
+
+### 7. Run Development Server
 
 ```bash
 python manage.py runserver
@@ -150,7 +175,7 @@ Use superuser credentials to:
 ### Phase 0 Limitations
 
 - Simple authentication (no JWT tokens)
-- SQLite database (not for production)
+- PostgreSQL database (local development)
 - No actual AI processing (placeholder)
 - Basic file upload validation
 - Session-based authentication
