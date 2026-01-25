@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "./context/AuthContext";
+import { jobAPI } from "./services/api";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import ImageComparison from "./components/ImageComparison";
@@ -63,31 +64,71 @@ function App() {
     setCurrentJob(previewJob);
   };
 
-  const handleJobSubmit = (jobData: { region: string; scenario: string, message: string }) => {
+  const handleJobSubmit = async (jobData: { region: string; scenario: string, message: string }) => {
     if (!uploadedFile) {
       alert("Please upload an image first");
       return;
     }
 
-    // Create preview URL for the uploaded image
-    const imageUrl = URL.createObjectURL(uploadedFile);
+    try {
+      // Create preview URL for immediate display
+      const imageUrl = URL.createObjectURL(uploadedFile);
 
-    // Add job to history
-    const newJob: Job = {
-      id: `job-${Date.now()}`,
-      timestamp: new Date().toLocaleString(),
-      region: jobData.region,
-      scenario: jobData.scenario,
-      file: uploadedFile,
-      status: "queued",
-      originalImage: imageUrl,
-    };
+      // Create temporary job to show in UI
+      const tempJob: Job = {
+        id: `temp-${Date.now()}`,
+        timestamp: new Date().toLocaleString(),
+        region: jobData.region,
+        scenario: jobData.scenario,
+        file: uploadedFile,
+        status: "processing",
+        originalImage: imageUrl,
+      };
 
-    setJobs([newJob, ...jobs]);
-    setCurrentJob(newJob);
+      setCurrentJob(tempJob);
+      setJobs([tempJob, ...jobs]);
 
-    // TODO: Send to backend API
-    // jobAPI.createJob(formData);
+      // Create FormData for backend submission
+      const formData = new FormData();
+      formData.append('original_image', uploadedFile);
+      formData.append('region', jobData.region);
+      formData.append('scenario', jobData.scenario);
+      if (jobData.message) {
+        formData.append('message', jobData.message);
+      }
+
+      // Submit to backend API
+      const createdJob = await jobAPI.createJob(formData);
+
+      // Update job with backend response
+      const updatedJob: Job = {
+        id: createdJob.id,
+        timestamp: new Date(createdJob.created_at).toLocaleString(),
+        region: createdJob.region,
+        scenario: createdJob.scenario,
+        file: uploadedFile,
+        status: createdJob.status,
+        originalImage: createdJob.original_image_url || imageUrl,
+        simulation1: createdJob.simulation1_url,
+        simulation2: createdJob.simulation2_url,
+      };
+
+      // Replace temporary job with real job
+      setCurrentJob(updatedJob);
+      setJobs(prevJobs => prevJobs.map(job =>
+        job.id === tempJob.id ? updatedJob : job
+      ));
+
+      console.log('Job created successfully:', createdJob);
+    } catch (error: any) {
+      console.error('Job submission error:', error);
+      alert(error.response?.data?.error || 'Failed to submit job. Please try again.');
+
+      // Reset to queued status on error
+      if (currentJob) {
+        setCurrentJob({ ...currentJob, status: 'failed' });
+      }
+    }
   };
 
   // Show loading spinner while checking authentication
