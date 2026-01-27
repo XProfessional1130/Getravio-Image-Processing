@@ -2,9 +2,13 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.conf import settings
 
-# Use default Django storage (local filesystem)
-# S3 storage is disabled - media files stored in backend/media/
-media_storage = None
+# Storage configuration - Use S3 if enabled, otherwise local filesystem
+if hasattr(settings, 'USE_S3') and settings.USE_S3:
+    from api.s3_storage import PublicMediaStorage
+    media_storage = PublicMediaStorage()
+else:
+    # Use default Django storage (local filesystem)
+    media_storage = None
 
 
 class Job(models.Model):

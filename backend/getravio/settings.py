@@ -141,6 +141,36 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 10,
 }
 
-# File Storage - Local filesystem
-# Files stored in backend/media/ directory
-DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+# AWS S3 Configuration
+USE_S3 = os.getenv('USE_S3', 'False') == 'True'
+
+if USE_S3:
+    # AWS Credentials
+    AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
+    AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'us-east-1')
+
+    # S3 Storage Configuration
+    DEFAULT_FILE_STORAGE = 'api.s3_storage.PublicMediaStorage'
+
+    # Optional: Custom domain for CloudFront or custom S3 endpoint
+    AWS_S3_CUSTOM_DOMAIN = os.getenv('AWS_S3_CUSTOM_DOMAIN', None)
+
+    # Performance settings
+    AWS_S3_OBJECT_PARAMETERS = {
+        'CacheControl': 'max-age=86400',  # Cache for 24 hours
+    }
+
+    # File upload settings
+    AWS_S3_FILE_OVERWRITE = False  # Don't overwrite files with same name
+    AWS_DEFAULT_ACL = None  # Don't use ACLs, rely on bucket policy
+
+    print(f"\n[OK] AWS S3 Storage Enabled")
+    print(f"  Bucket: {AWS_STORAGE_BUCKET_NAME}")
+    print(f"  Region: {AWS_S3_REGION_NAME}")
+else:
+    # Local File Storage
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+    print(f"\n[OK] Local File Storage Enabled")
+    print(f"  Media Root: {BASE_DIR / 'media'}")
