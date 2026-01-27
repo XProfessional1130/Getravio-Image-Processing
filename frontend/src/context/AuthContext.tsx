@@ -7,7 +7,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,32 +28,37 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load user from localStorage on mount
+  // Load user from localStorage and get CSRF token on mount
   useEffect(() => {
-    const loadUser = () => {
+    const initAuth = async () => {
       try {
+        // Get CSRF token from backend
+        await authAPI.getCSRFToken();
+
+        // Load user from localStorage
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
           setUser(JSON.parse(storedUser));
         }
       } catch (error) {
-        console.error('Error loading user from localStorage:', error);
+        console.error('Error initializing auth:', error);
         localStorage.removeItem('user');
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadUser();
+    initAuth();
   }, []);
 
   const login = async (credentials: LoginCredentials) => {
     try {
       const response = await authAPI.login(credentials);
 
-      // Store user in state and localStorage
+      // Store user and token in state and localStorage
       setUser(response.user);
       localStorage.setItem('user', JSON.stringify(response.user));
+      localStorage.setItem('authToken', response.token);
       localStorage.setItem('isAuthenticated', 'true');
     } catch (error: any) {
       console.error('Login error:', error);
@@ -63,24 +68,32 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const register = async (data: RegisterData) => {
     try {
-      const user = await authAPI.register(data);
+      const response = await authAPI.register(data);
 
-      // After registration, automatically log in
-      await login({
-        email: data.email,
-        password: data.password,
-      });
+      // Store user and token after successful registration
+      setUser(response.user);
+      localStorage.setItem('user', JSON.stringify(response.user));
+      localStorage.setItem('authToken', response.token);
+      localStorage.setItem('isAuthenticated', 'true');
     } catch (error: any) {
       console.error('Registration error:', error);
       throw new Error(error.response?.data?.error || 'Registration failed');
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('authToken');
+  const logout = async () => {
+    try {
+      // Call backend to delete the token
+      await authAPI.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Always clear local state regardless of API call result
+      setUser(null);
+      localStorage.removeItem('user');
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('authToken');
+    }
   };
 
   const value = {

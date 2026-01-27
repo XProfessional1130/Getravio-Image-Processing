@@ -2,6 +2,22 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://127.0.0.1:8000/api';
 
+// Helper function to get CSRF token from cookies
+function getCookie(name: string): string | null {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
 // Create axios instance with default config
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -11,13 +27,24 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to add auth token if available
+// Request interceptor to add CSRF token and auth token
 api.interceptors.request.use(
   (config) => {
+    // Add CSRF token for Django
+    const csrfToken = getCookie('csrftoken');
+    if (csrfToken) {
+      config.headers['X-CSRFToken'] = csrfToken;
+      console.log('CSRF Token found and added to headers:', csrfToken);
+    } else {
+      console.warn('No CSRF token found in cookies');
+    }
+
+    // Add auth token if available (Token Authentication)
     const token = localStorage.getItem('authToken');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization = `Token ${token}`;
     }
+
     return config;
   },
   (error) => {
@@ -61,16 +88,28 @@ export interface User {
 export interface LoginResponse {
   message: string;
   user: User;
+  token: string;
+}
+
+export interface RegisterResponse {
+  message: string;
+  user: User;
+  token: string;
 }
 
 // Auth API calls
 export const authAPI = {
+  // Get CSRF token from backend
+  getCSRFToken: async (): Promise<void> => {
+    await api.get('/auth/csrf');
+  },
+
   login: async (credentials: LoginCredentials): Promise<LoginResponse> => {
     const response = await api.post('/auth/login', credentials);
     return response.data;
   },
 
-  register: async (data: RegisterData): Promise<User> => {
+  register: async (data: RegisterData): Promise<RegisterResponse> => {
     const response = await api.post('/auth/register', data);
     return response.data;
   },

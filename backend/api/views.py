@@ -2,14 +2,28 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
+from django.views.decorators.csrf import ensure_csrf_cookie
 from .models import Job
 from .serializers import JobSerializer, LoginSerializer, UserSerializer
 
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+@ensure_csrf_cookie
+def csrf_token_view(request):
+    """
+    Get CSRF token
+    GET /api/auth/csrf
+    """
+    return Response({'detail': 'CSRF cookie set'})
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@ensure_csrf_cookie
 def login_view(request):
     """
     Login endpoint
@@ -29,9 +43,12 @@ def login_view(request):
 
         if user is not None:
             login(request, user)
+            # Get or create token for the user
+            token, created = Token.objects.get_or_create(user=user)
             return Response({
                 'message': 'Login successful',
-                'user': UserSerializer(user).data
+                'user': UserSerializer(user).data,
+                'token': token.key
             }, status=status.HTTP_200_OK)
         else:
             return Response({
@@ -80,9 +97,13 @@ def register_view(request):
         last_name=last_name
     )
 
+    # Create token for the user
+    token = Token.objects.create(user=user)
+
     return Response({
         'message': 'Registration successful',
-        'user': UserSerializer(user).data
+        'user': UserSerializer(user).data,
+        'token': token.key
     }, status=status.HTTP_201_CREATED)
 
 
@@ -95,6 +116,21 @@ def current_user_view(request):
     """
     serializer = UserSerializer(request.user)
     return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_view(request):
+    """
+    Logout endpoint - deletes the user's token
+    POST /api/auth/logout
+    """
+    try:
+        # Delete the user's token to logout
+        request.user.auth_token.delete()
+        return Response({'message': 'Logout successful'}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class JobViewSet(viewsets.ModelViewSet):
