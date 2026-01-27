@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from django.conf import settings
 from .models import Job
 from .sample_images import get_sample_simulation_urls
 
@@ -41,27 +42,30 @@ class JobSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'user', 'status', 'created_at', 'updated_at']
 
     def get_original_image_url(self, obj):
-        request = self.context.get('request')
-        if obj.original_image and request:
-            return request.build_absolute_uri(obj.original_image.url)
+        if obj.original_image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.original_image.url)
         return None
 
     def get_simulation1_url(self, obj):
-        request = self.context.get('request')
-        if obj.simulation1_image and request:
-            return request.build_absolute_uri(obj.simulation1_image.url)
+        if obj.simulation1_image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.simulation1_image.url)
         # Phase 0: Return sample image if job is completed but no real simulation exists
-        elif obj.status == 'completed':
+        if obj.status == 'completed':
             sample_urls = get_sample_simulation_urls()
             return sample_urls['simulation1']
         return None
 
     def get_simulation2_url(self, obj):
-        request = self.context.get('request')
-        if obj.simulation2_image and request:
-            return request.build_absolute_uri(obj.simulation2_image.url)
+        if obj.simulation2_image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.simulation2_image.url)
         # Phase 0: Return sample image if job is completed but no real simulation exists
-        elif obj.status == 'completed':
+        if obj.status == 'completed':
             sample_urls = get_sample_simulation_urls()
             return sample_urls['simulation2']
         return None

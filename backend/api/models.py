@@ -1,5 +1,10 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.conf import settings
+
+# Use default Django storage (local filesystem)
+# S3 storage is disabled - media files stored in backend/media/
+media_storage = None
 
 
 class Job(models.Model):
@@ -28,10 +33,23 @@ class Job(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='queued')
     message = models.TextField(blank=True, null=True)
 
-    # Image fields
-    original_image = models.ImageField(upload_to='originals/')
-    simulation1_image = models.ImageField(upload_to='simulations/', blank=True, null=True)
-    simulation2_image = models.ImageField(upload_to='simulations/', blank=True, null=True)
+    # Image fields (stored in S3 if USE_S3=True, otherwise local storage)
+    original_image = models.ImageField(
+        upload_to='originals/',
+        storage=media_storage
+    )
+    simulation1_image = models.ImageField(
+        upload_to='simulations/',
+        storage=media_storage,
+        blank=True,
+        null=True
+    )
+    simulation2_image = models.ImageField(
+        upload_to='simulations/',
+        storage=media_storage,
+        blank=True,
+        null=True
+    )
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)

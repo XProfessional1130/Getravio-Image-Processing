@@ -6,8 +6,12 @@ from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.conf import settings
+import logging
 from .models import Job
 from .serializers import JobSerializer, LoginSerializer, UserSerializer
+
+logger = logging.getLogger(__name__)
 
 
 @api_view(['GET'])
@@ -153,4 +157,14 @@ class JobViewSet(viewsets.ModelViewSet):
         # Automatically set the user to the current user
         # Phase 0: Mark as completed immediately (using sample images)
         # In production, this will be 'queued' and processed by background workers
-        serializer.save(user=self.request.user, status='completed')
+        logger.info(f"Creating job for user: {self.request.user.username}")
+
+        job = serializer.save(user=self.request.user, status='completed')
+
+        # Log storage information
+        if job.original_image:
+            logger.info(f"Original image uploaded: {job.original_image.name}")
+            logger.info(f"Original image URL: {job.original_image.url}")
+            logger.info(f"Storage backend: {job.original_image.storage.__class__.__name__}")
+
+        return job
