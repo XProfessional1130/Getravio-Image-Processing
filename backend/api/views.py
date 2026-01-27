@@ -115,4 +115,6 @@ class JobViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         # Automatically set the user to the current user
-        serializer.save(user=self.request.user, status='queued')
+        # Phase 0: Mark as completed immediately (using sample images)
+        # In production, this will be 'queued' and processed by background workers
+        serializer.save(user=self.request.user, status='completed')

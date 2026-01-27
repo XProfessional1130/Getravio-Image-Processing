@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Job
+from .sample_images import get_sample_simulation_urls
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -49,12 +50,20 @@ class JobSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if obj.simulation1_image and request:
             return request.build_absolute_uri(obj.simulation1_image.url)
+        # Phase 0: Return sample image if job is completed but no real simulation exists
+        elif obj.status == 'completed':
+            sample_urls = get_sample_simulation_urls()
+            return sample_urls['simulation1']
         return None
 
     def get_simulation2_url(self, obj):
         request = self.context.get('request')
         if obj.simulation2_image and request:
             return request.build_absolute_uri(obj.simulation2_image.url)
+        # Phase 0: Return sample image if job is completed but no real simulation exists
+        elif obj.status == 'completed':
+            sample_urls = get_sample_simulation_urls()
+            return sample_urls['simulation2']
         return None
 
 
