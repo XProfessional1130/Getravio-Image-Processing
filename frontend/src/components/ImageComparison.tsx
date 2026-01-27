@@ -93,10 +93,17 @@ function ImageComparison({ job, onHandleJobSubmit, onImageUpload }: ImageCompari
             <div className="w-full aspect-[3/4] bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-xl sm:rounded-2xl border border-blue-100/50 flex items-center justify-center overflow-hidden shadow-md shadow-blue-900/5 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10">
               {job && job.simulation1 ? (
                 <img src={job.simulation1} alt="Simulation 1" className="w-full h-full object-cover" />
-              ) : (
+              ) : job && (job.status === 'queued' || job.status === 'processing') ? (
                 <div className="flex flex-col items-center gap-1.5 sm:gap-2">
                   <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-3 sm:border-4 border-blue-200 border-t-blue-600 animate-spin" />
                   <span className="text-blue-600/70 text-xs sm:text-sm font-semibold">Awaiting...</span>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2 px-4">
+                  <svg className="w-12 h-12 sm:w-16 sm:h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-slate-400 text-xs sm:text-sm font-medium text-center">No simulation yet</span>
                 </div>
               )}
             </div>
@@ -107,10 +114,17 @@ function ImageComparison({ job, onHandleJobSubmit, onImageUpload }: ImageCompari
             <div className="w-full aspect-[3/4] bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-xl sm:rounded-2xl border border-blue-100/50 flex items-center justify-center overflow-hidden shadow-md shadow-blue-900/5 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10">
               {job && job.simulation2 ? (
                 <img src={job.simulation2} alt="Simulation 2" className="w-full h-full object-cover" />
-              ) : (
+              ) : job && (job.status === 'queued' || job.status === 'processing') ? (
                 <div className="flex flex-col items-center gap-1.5 sm:gap-2">
                   <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-3 sm:border-4 border-purple-200 border-t-purple-600 animate-spin" />
                   <span className="text-purple-600/70 text-xs sm:text-sm font-semibold">Awaiting...</span>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2 px-4">
+                  <svg className="w-12 h-12 sm:w-16 sm:h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-slate-400 text-xs sm:text-sm font-medium text-center">No simulation yet</span>
                 </div>
               )}
             </div>
