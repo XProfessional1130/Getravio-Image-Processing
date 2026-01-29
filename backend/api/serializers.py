@@ -1,16 +1,65 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.conf import settings
-from .models import Job
+from .models import Job, UserProfile
 from .sample_images import get_sample_simulation_urls
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    """Serializer for UserProfile model"""
+
+    class Meta:
+        model = UserProfile
+        fields = ['age', 'gender', 'phone', 'bio', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
 
 
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for User model"""
 
+    profile = UserProfileSerializer(read_only=True)
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile']
+
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating user and profile"""
+
+    age = serializers.IntegerField(required=False, allow_null=True)
+    gender = serializers.ChoiceField(choices=UserProfile.GENDER_CHOICES, required=False, allow_null=True)
+    phone = serializers.CharField(max_length=20, required=False, allow_null=True, allow_blank=True)
+    bio = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name', 'age', 'gender', 'phone', 'bio']
+
+    def update(self, instance, validated_data):
+        # Extract profile fields
+        profile_fields = {
+            'age': validated_data.pop('age', None),
+            'gender': validated_data.pop('gender', None),
+            'phone': validated_data.pop('phone', None),
+            'bio': validated_data.pop('bio', None),
+        }
+
+        # Update user fields
+        instance.first_name = validated_data.get('first_name', instance.first_name)
+        instance.last_name = validated_data.get('last_name', instance.last_name)
+        instance.save()
+
+        # Get or create profile (for users created before UserProfile model was added)
+        profile, created = UserProfile.objects.get_or_create(user=instance)
+
+        # Update profile fields
+        for field, value in profile_fields.items():
+            if value is not None:
+                setattr(profile, field, value)
+        profile.save()
+
+        return instance
 
 
 class JobSerializer(serializers.ModelSerializer):
@@ -36,6 +85,8 @@ class JobSerializer(serializers.ModelSerializer):
             'simulation1_url',
             'simulation2_image',
             'simulation2_url',
+            'selected_simulation',
+            'is_favorite',
             'created_at',
             'updated_at',
         ]
