@@ -1,29 +1,22 @@
 import { useState } from "react";
 import { useAuth } from "./context/AuthContext";
-import { jobAPI } from "./services/api";
+import { jobAPI, Job } from "./services/api";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import ImageComparison from "./components/ImageComparison";
-
-interface Job {
-  id: string;
-  timestamp: string;
-  region: string;
-  scenario: string;
-  file: File;
-  status: 'queued' | 'processing' | 'completed' | 'failed';
-  originalImage?: string;
-  simulation1?: string;
-  simulation2?: string;
-}
+import JobHistory from "./components/JobHistory";
+import Profile from "./components/Profile";
+import ResultSelection from "./components/ResultSelection";
 
 type AuthView = 'login' | 'register';
+type AppPage = 'upload' | 'history' | 'profile' | 'result';
 
 function App() {
   const { isAuthenticated, isLoading, login, register, logout } = useAuth();
   const [authView, setAuthView] = useState<AuthView>('login');
+  const [currentPage, setCurrentPage] = useState<AppPage>('upload');
   const [currentJob, setCurrentJob] = useState<Job | null>(null);
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   const handleLogin = async (credentials: { email: string; password: string }) => {
@@ -43,25 +36,13 @@ function App() {
   const handleLogout = () => {
     logout();
     setCurrentJob(null);
+    setSelectedJob(null);
     setUploadedFile(null);
-    setJobs([]);
+    setCurrentPage('upload');
   };
 
   const handleImageUpload = (file: File) => {
     setUploadedFile(file);
-
-    // Create immediate preview by creating a temporary job
-    const imageUrl = URL.createObjectURL(file);
-    const previewJob: Job = {
-      id: `preview-${Date.now()}`,
-      timestamp: new Date().toLocaleString(),
-      region: 'gluteal',
-      scenario: 'projection-level-1',
-      file: file,
-      status: 'queued',
-      originalImage: imageUrl,
-    };
-    setCurrentJob(previewJob);
   };
 
   const handleJobSubmit = async (jobData: { region: string; scenario: string, message: string }) => {
@@ -71,23 +52,6 @@ function App() {
     }
 
     try {
-      // Create preview URL for immediate display
-      const imageUrl = URL.createObjectURL(uploadedFile);
-
-      // Create temporary job to show in UI
-      const tempJob: Job = {
-        id: `temp-${Date.now()}`,
-        timestamp: new Date().toLocaleString(),
-        region: jobData.region,
-        scenario: jobData.scenario,
-        file: uploadedFile,
-        status: "processing",
-        originalImage: imageUrl,
-      };
-
-      setCurrentJob(tempJob);
-      setJobs([tempJob, ...jobs]);
-
       // Create FormData for backend submission
       const formData = new FormData();
       formData.append('original_image', uploadedFile);
@@ -100,35 +64,31 @@ function App() {
       // Submit to backend API
       const createdJob = await jobAPI.createJob(formData);
 
-      // Update job with backend response
-      const updatedJob: Job = {
-        id: createdJob.id,
-        timestamp: new Date(createdJob.created_at).toLocaleString(),
-        region: createdJob.region,
-        scenario: createdJob.scenario,
-        file: uploadedFile,
-        status: createdJob.status,
-        originalImage: createdJob.original_image_url || imageUrl,
-        simulation1: createdJob.simulation1_url,
-        simulation2: createdJob.simulation2_url,
-      };
-
-      // Replace temporary job with real job
-      setCurrentJob(updatedJob);
-      setJobs(prevJobs => prevJobs.map(job =>
-        job.id === tempJob.id ? updatedJob : job
-      ));
+      // Set current job and switch to result view
+      setCurrentJob(createdJob);
+      setSelectedJob(createdJob);
+      setCurrentPage('result');
 
       console.log('Job created successfully:', createdJob);
     } catch (error: any) {
       console.error('Job submission error:', error);
       alert(error.response?.data?.error || 'Failed to submit job. Please try again.');
-
-      // Reset to queued status on error
-      if (currentJob) {
-        setCurrentJob({ ...currentJob, status: 'failed' });
-      }
     }
+  };
+
+  const handleViewJob = (job: Job) => {
+    setSelectedJob(job);
+    setCurrentPage('result');
+  };
+
+  const handleSelectionMade = (updatedJob: Job) => {
+    setSelectedJob(updatedJob);
+    setCurrentJob(updatedJob);
+  };
+
+  const handleBackToUpload = () => {
+    setCurrentPage('upload');
+    setUploadedFile(null);
   };
 
   // Show loading spinner while checking authentication
@@ -187,6 +147,41 @@ function App() {
                 Getravio
               </h1>
             </div>
+
+            {/* Navigation Menu */}
+            <nav className="hidden md:flex items-center gap-4">
+              <button
+                onClick={() => setCurrentPage('upload')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                  currentPage === 'upload'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-700 hover:bg-blue-50'
+                }`}
+              >
+                Upload
+              </button>
+              <button
+                onClick={() => setCurrentPage('history')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                  currentPage === 'history'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-700 hover:bg-blue-50'
+                }`}
+              >
+                History
+              </button>
+              <button
+                onClick={() => setCurrentPage('profile')}
+                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                  currentPage === 'profile'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-700 hover:bg-blue-50'
+                }`}
+              >
+                Profile
+              </button>
+            </nav>
+
             <button
               onClick={handleLogout}
               className="bg-pink-500 hover:bg-pink-600 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg sm:rounded-xl transition-all duration-200 text-xs sm:text-sm font-semibold shadow-md shadow-pink-500/25 hover:shadow-lg hover:shadow-pink-500/30"
@@ -194,11 +189,74 @@ function App() {
               Logout
             </button>
           </div>
+
+          {/* Mobile Navigation */}
+          <nav className="md:hidden flex items-center gap-2 mt-4">
+            <button
+              onClick={() => setCurrentPage('upload')}
+              className={`flex-1 px-3 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+                currentPage === 'upload'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-gray-700 hover:bg-blue-50'
+              }`}
+            >
+              Upload
+            </button>
+            <button
+              onClick={() => setCurrentPage('history')}
+              className={`flex-1 px-3 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+                currentPage === 'history'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-gray-700 hover:bg-blue-50'
+              }`}
+            >
+              History
+            </button>
+            <button
+              onClick={() => setCurrentPage('profile')}
+              className={`flex-1 px-3 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+                currentPage === 'profile'
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'text-gray-700 hover:bg-blue-50'
+              }`}
+            >
+              Profile
+            </button>
+          </nav>
         </header>
 
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 py-6 sm:py-8 md:py-10">
-          <ImageComparison job={currentJob} onHandleJobSubmit={handleJobSubmit} onImageUpload={handleImageUpload} />
-          {/* <JobHistory jobs={jobs} onViewJob={handleViewJob} /> */}
+          {/* Page Content */}
+          {currentPage === 'upload' && (
+            <ImageComparison
+              job={currentJob}
+              onHandleJobSubmit={handleJobSubmit}
+              onImageUpload={handleImageUpload}
+            />
+          )}
+
+          {currentPage === 'history' && (
+            <JobHistory onViewJob={handleViewJob} />
+          )}
+
+          {currentPage === 'profile' && (
+            <Profile />
+          )}
+
+          {currentPage === 'result' && selectedJob && (
+            <div>
+              <button
+                onClick={handleBackToUpload}
+                className="mb-4 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-all duration-200"
+              >
+                &larr; Back to Upload
+              </button>
+              <ResultSelection
+                job={selectedJob}
+                onSelectionMade={handleSelectionMade}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

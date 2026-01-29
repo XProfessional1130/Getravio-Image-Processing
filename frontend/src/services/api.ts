@@ -79,10 +79,31 @@ export interface RegisterData {
   last_name?: string;
 }
 
+export interface UserProfile {
+  age?: number;
+  gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+  phone?: string;
+  bio?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface User {
   id: number;
   username: string;
   email: string;
+  first_name?: string;
+  last_name?: string;
+  profile?: UserProfile;
+}
+
+export interface ProfileUpdateData {
+  first_name?: string;
+  last_name?: string;
+  age?: number;
+  gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+  phone?: string;
+  bio?: string;
 }
 
 export interface LoginResponse {
@@ -122,6 +143,17 @@ export const authAPI = {
   logout: async (): Promise<void> => {
     await api.post('/auth/logout');
   },
+
+  // Profile management
+  getProfile: async (): Promise<User> => {
+    const response = await api.get('/profile');
+    return response.data;
+  },
+
+  updateProfile: async (data: ProfileUpdateData): Promise<User> => {
+    const response = await api.patch('/profile', data);
+    return response.data;
+  },
 };
 
 // Job API calls
@@ -134,8 +166,26 @@ export interface Job {
   original_image_url?: string;
   simulation1_url?: string;
   simulation2_url?: string;
+  selected_simulation?: 'simulation1' | 'simulation2';
+  is_favorite: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface JobFilters {
+  status?: string;
+  favorites?: boolean;
+  date_from?: string;
+  date_to?: string;
+  search?: string;
+  page?: number;
+}
+
+export interface JobListResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: Job[];
 }
 
 export const jobAPI = {
@@ -148,9 +198,17 @@ export const jobAPI = {
     return response.data;
   },
 
-  getJobs: async (): Promise<Job[]> => {
-    const response = await api.get('/jobs/');
-    return response.data.results || response.data;
+  getJobs: async (filters?: JobFilters): Promise<JobListResponse> => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.favorites) params.append('favorites', 'true');
+    if (filters?.date_from) params.append('date_from', filters.date_from);
+    if (filters?.date_to) params.append('date_to', filters.date_to);
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.page) params.append('page', filters.page.toString());
+
+    const response = await api.get(`/jobs/?${params.toString()}`);
+    return response.data;
   },
 
   getJob: async (id: string): Promise<Job> => {
@@ -165,6 +223,37 @@ export const jobAPI = {
 
   deleteJob: async (id: string): Promise<void> => {
     await api.delete(`/jobs/${id}/`);
+  },
+
+  // Job history
+  getHistory: async (filters?: JobFilters): Promise<JobListResponse> => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.favorites) params.append('favorites', 'true');
+    if (filters?.date_from) params.append('date_from', filters.date_from);
+    if (filters?.date_to) params.append('date_to', filters.date_to);
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.page) params.append('page', filters.page.toString());
+
+    const response = await api.get(`/jobs/history/?${params.toString()}`);
+    return response.data;
+  },
+
+  // Favorites
+  getFavorites: async (): Promise<Job[]> => {
+    const response = await api.get('/jobs/favorites/');
+    return response.data;
+  },
+
+  toggleFavorite: async (id: string): Promise<{ message: string; is_favorite: boolean; job: Job }> => {
+    const response = await api.post(`/jobs/${id}/favorite/`);
+    return response.data;
+  },
+
+  // Result selection
+  selectResult: async (id: string, selection: 'simulation1' | 'simulation2'): Promise<{ message: string; job: Job }> => {
+    const response = await api.post(`/jobs/${id}/select/`, { selection });
+    return response.data;
   },
 };
 
