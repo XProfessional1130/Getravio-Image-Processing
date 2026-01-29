@@ -1,15 +1,6 @@
 import { useState, ChangeEvent } from 'react';
 import Upload from './Upload';
-
-interface Job {
-  id: string;
-  region: string;
-  scenario: string;
-  status: 'queued' | 'processing' | 'completed' | 'failed';
-  originalImage?: string;
-  simulation1?: string;
-  simulation2?: string;
-}
+import { Job } from '../services/api';
 
 interface ImageComparisonProps {
   job: Job | null;
@@ -62,8 +53,25 @@ function ImageComparison({ job, onHandleJobSubmit, onImageUpload }: ImageCompari
           <div className="space-y-2 sm:space-y-3">
             {showLabels && <h3 className="text-xs sm:text-sm font-bold text-blue-900/80 tracking-wide">ORIGINAL</h3>}
             <div className="w-full aspect-[3/4] bg-gradient-to-br from-slate-50 to-blue-50/40 rounded-xl sm:rounded-2xl border-2 border-dashed border-blue-200/60 flex items-center justify-center overflow-hidden relative transition-all duration-300 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-500/10">
-              {job && job.originalImage ? (
-                <img src={job.originalImage} alt="Original" className="w-full h-full object-cover rounded-lg sm:rounded-xl" />
+              {job?.original_image_url ? (
+                <div className="w-full h-full relative group">
+                  <img src={job.original_image_url} alt="Original" className="w-full h-full object-cover rounded-lg sm:rounded-xl" />
+                  <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      disabled={job?.status === 'processing'}
+                      className="hidden"
+                    />
+                    <div className="text-white text-center">
+                      <svg className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                      <span className="text-sm font-semibold">Change Image</span>
+                    </div>
+                  </label>
+                </div>
               ) : (
                 <label
                   className={`w-full h-full flex flex-col items-center justify-center gap-1.5 sm:gap-2 ${job?.status === 'processing' ? 'cursor-not-allowed' : 'cursor-pointer'
@@ -91,8 +99,8 @@ function ImageComparison({ job, onHandleJobSubmit, onImageUpload }: ImageCompari
           <div className="space-y-2 sm:space-y-3">
             {showLabels && <h3 className="text-xs sm:text-sm font-bold text-blue-900/80 tracking-wide">REAR</h3>}
             <div className="w-full aspect-[3/4] bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-xl sm:rounded-2xl border border-blue-100/50 flex items-center justify-center overflow-hidden shadow-md shadow-blue-900/5 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10">
-              {job && job.simulation1 ? (
-                <img src={job.simulation1} alt="Simulation 1" className="w-full h-full object-cover" />
+              {job && job.simulation1_url ? (
+                <img src={job.simulation1_url} alt="Simulation 1" className="w-full h-full object-cover" />
               ) : job && (job.status === 'queued' || job.status === 'processing') ? (
                 <div className="flex flex-col items-center gap-1.5 sm:gap-2">
                   <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-3 sm:border-4 border-blue-200 border-t-blue-600 animate-spin" />
@@ -112,8 +120,8 @@ function ImageComparison({ job, onHandleJobSubmit, onImageUpload }: ImageCompari
           <div className="space-y-2 sm:space-y-3">
             {showLabels && <h3 className="text-xs sm:text-sm font-bold text-blue-900/80 tracking-wide">SIDE</h3>}
             <div className="w-full aspect-[3/4] bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-xl sm:rounded-2xl border border-blue-100/50 flex items-center justify-center overflow-hidden shadow-md shadow-blue-900/5 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10">
-              {job && job.simulation2 ? (
-                <img src={job.simulation2} alt="Simulation 2" className="w-full h-full object-cover" />
+              {job && job.simulation2_url ? (
+                <img src={job.simulation2_url} alt="Simulation 2" className="w-full h-full object-cover" />
               ) : job && (job.status === 'queued' || job.status === 'processing') ? (
                 <div className="flex flex-col items-center gap-1.5 sm:gap-2">
                   <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-3 sm:border-4 border-purple-200 border-t-purple-600 animate-spin" />

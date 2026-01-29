@@ -43,6 +43,21 @@ function App() {
 
   const handleImageUpload = (file: File) => {
     setUploadedFile(file);
+
+    // Create preview URL for immediate display
+    const imageUrl = URL.createObjectURL(file);
+    const previewJob: Job = {
+      id: `preview-${Date.now()}`,
+      region: 'gluteal',
+      scenario: 'projection-level-1',
+      status: 'queued',
+      message: '',
+      original_image_url: imageUrl,
+      is_favorite: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    setCurrentJob(previewJob);
   };
 
   const handleJobSubmit = async (jobData: { region: string; scenario: string, message: string }) => {
@@ -89,6 +104,8 @@ function App() {
   const handleBackToUpload = () => {
     setCurrentPage('upload');
     setUploadedFile(null);
+    setCurrentJob(null);
+    setSelectedJob(null);
   };
 
   // Show loading spinner while checking authentication
@@ -228,11 +245,24 @@ function App() {
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 py-6 sm:py-8 md:py-10">
           {/* Page Content */}
           {currentPage === 'upload' && (
-            <ImageComparison
-              job={currentJob}
-              onHandleJobSubmit={handleJobSubmit}
-              onImageUpload={handleImageUpload}
-            />
+            <div>
+              {currentJob && (
+                <button
+                  onClick={() => {
+                    setCurrentJob(null);
+                    setUploadedFile(null);
+                  }}
+                  className="mb-4 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg font-medium transition-all duration-200"
+                >
+                  + New Upload
+                </button>
+              )}
+              <ImageComparison
+                job={currentJob}
+                onHandleJobSubmit={handleJobSubmit}
+                onImageUpload={handleImageUpload}
+              />
+            </div>
           )}
 
           {currentPage === 'history' && (
