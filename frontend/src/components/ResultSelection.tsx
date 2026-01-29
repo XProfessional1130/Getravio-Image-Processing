@@ -1,189 +1,134 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Job, jobAPI } from '../services/api';
 import './ResultSelection.css';
 
 interface ResultSelectionProps {
   job: Job;
-  onSelectionMade?: (job: Job) => void;
+  onSelectionMade?: (updatedJob: Job) => void;
+  onPrevious?: () => void;
+  onNext?: () => void;
+  hasPrevious?: boolean;
+  hasNext?: boolean;
 }
 
-const ResultSelection: React.FC<ResultSelectionProps> = ({ job, onSelectionMade }) => {
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [selecting, setSelecting] = useState(false);
-
-  const results = [
-    {
-      key: 'simulation1' as const,
-      url: job.simulation1_url,
-      title: 'Result 1',
-    },
-    {
-      key: 'simulation2' as const,
-      url: job.simulation2_url,
-      title: 'Result 2',
-    },
-  ];
-
-  const handleSelectResult = async () => {
-    const selection = results[currentSlide].key;
-
-    try {
-      setSelecting(true);
-      const response = await jobAPI.selectResult(job.id, selection);
-      if (onSelectionMade) {
-        onSelectionMade(response.job);
-      }
-      alert(`✓ ${results[currentSlide].title} selected!`);
-    } catch (error) {
-      alert('Failed to save selection');
-    } finally {
-      setSelecting(false);
-    }
-  };
-
-  const goToSlide = (index: number) => {
-    setCurrentSlide(index);
-  };
-
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % results.length);
-  };
-
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + results.length) % results.length);
-  };
+const ResultSelection: React.FC<ResultSelectionProps> = ({
+  job,
+  onSelectionMade,
+  onPrevious,
+  onNext,
+  hasPrevious = false,
+  hasNext = false,
+}) => {
 
   return (
     <div className="result-selection-container">
-      <div className="selection-header">
-        <h2>Select Your Best Result</h2>
-        <p>Compare both results and choose your favorite</p>
-      </div>
-
-      {/* Slider */}
-      <div className="slider-container">
-        <button className="nav-btn prev" onClick={prevSlide} aria-label="Previous">
-          ‹
-        </button>
-
-        <div className="slider-content">
-          {results.map((result, index) => (
-            <div
-              key={result.key}
-              className={`slide ${index === currentSlide ? 'active' : ''}`}
-              style={{ display: index === currentSlide ? 'block' : 'none' }}
-            >
-              <div className="result-image-container">
-                {result.url ? (
-                  <img src={result.url} alt={result.title} />
-                ) : (
-                  <div className="no-image">No simulation available</div>
-                )}
-              </div>
-
-              <div className="result-info">
-                <h3>{result.title}</h3>
-                <p className="scenario">{job.scenario.replace(/-/g, ' ')}</p>
-                {job.selected_simulation === result.key && (
-                  <span className="selected-badge">✓ Currently Selected</span>
-                )}
-              </div>
-            </div>
-          ))}
+      {/* Header with Job Info */}
+      <div className="result-header">
+        <div className="result-info">
+          <h2 className="result-title">Generation Result</h2>
+          <div className="result-meta">
+            <span className="result-region">{job.region}</span>
+            <span className="result-separator">•</span>
+            <span className="result-scenario">{job.scenario}</span>
+            <span className="result-separator">•</span>
+            <span className={`result-status status-${job.status}`}>
+              {job.status.toUpperCase()}
+            </span>
+          </div>
         </div>
 
-        <button className="nav-btn next" onClick={nextSlide} aria-label="Next">
-          ›
-        </button>
-      </div>
-
-      {/* Slide Indicators */}
-      <div className="slide-indicators">
-        {results.map((result, index) => (
-          <button
-            key={result.key}
-            className={`indicator ${index === currentSlide ? 'active' : ''} ${
-              job.selected_simulation === result.key ? 'selected' : ''
-            }`}
-            onClick={() => goToSlide(index)}
-          >
-            {result.title}
-            {job.selected_simulation === result.key && ' ✓'}
-          </button>
-        ))}
-      </div>
-
-      {/* Action Buttons */}
-      <div className="action-buttons">
-        <button
-          className="select-button"
-          onClick={handleSelectResult}
-          disabled={selecting}
-        >
-          {selecting ? 'Selecting...' : `Select ${results[currentSlide].title}`}
-        </button>
-      </div>
-
-      {/* Side by Side Comparison View */}
-      <div className="comparison-view">
-        <h3>Side by Side Comparison</h3>
-        <div className="comparison-grid">
-          {results.map((result) => (
-            <div
-              key={result.key}
-              className={`comparison-item ${
-                job.selected_simulation === result.key ? 'selected' : ''
-              }`}
+        {/* Navigation for Previous/Next Jobs */}
+        {(hasPrevious || hasNext) && (
+          <div className="job-navigation">
+            <button
+              onClick={onPrevious}
+              disabled={!hasPrevious}
+              className="nav-button"
             >
-              <div className="comparison-image">
-                {result.url ? (
-                  <img src={result.url} alt={result.title} />
-                ) : (
-                  <div className="no-image">No image</div>
-                )}
-              </div>
-              <div className="comparison-info">
-                <h4>{result.title}</h4>
-                {job.selected_simulation === result.key && (
-                  <span className="badge">Selected ✓</span>
-                )}
-              </div>
-              <button
-                className={`select-btn ${
-                  job.selected_simulation === result.key ? 'selected' : ''
-                }`}
-                onClick={async () => {
-                  try {
-                    setSelecting(true);
-                    const response = await jobAPI.selectResult(job.id, result.key);
-                    if (onSelectionMade) {
-                      onSelectionMade(response.job);
-                    }
-                    alert(`✓ ${result.title} selected!`);
-                  } catch (error) {
-                    alert('Failed to save selection');
-                  } finally {
-                    setSelecting(false);
-                  }
-                }}
-                disabled={selecting}
-              >
-                {job.selected_simulation === result.key ? 'Selected ✓' : 'Select This'}
-              </button>
-            </div>
-          ))}
-        </div>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Previous
+            </button>
+            <button
+              onClick={onNext}
+              disabled={!hasNext}
+              className="nav-button"
+            >
+              Next
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Original Image Reference */}
-      <div className="original-reference">
-        <h3>Original Image</h3>
-        <div className="original-image-container">
-          {job.original_image_url ? (
-            <img src={job.original_image_url} alt="Original" />
-          ) : (
-            <div className="no-image">No original image</div>
-          )}
+      {/* Help Text */}
+      <div className="help-text">
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+        </svg>
+        <span>Compare all three views side-by-side to see the simulation results.</span>
+      </div>
+
+      {/* All 3 Images in One Row */}
+      <div className="images-comparison-row">
+        {/* Original Image */}
+        <div className="image-column original-column">
+          <div className="column-header">
+            <h3>ORIGINAL</h3>
+          </div>
+          <div className="image-container">
+            {job.original_image_url ? (
+              <img src={job.original_image_url} alt="Original" />
+            ) : (
+              <div className="no-image">
+                <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span>No image</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Simulation 1 - REAR */}
+        <div className="image-column result-column">
+          <div className="column-header">
+            <h3>REAR VIEW</h3>
+          </div>
+          <div className="image-container">
+            {job.simulation1_url ? (
+              <img src={job.simulation1_url} alt="Simulation 1 - Rear" />
+            ) : (
+              <div className="no-image">
+                <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span>No simulation</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Simulation 2 - SIDE */}
+        <div className="image-column result-column">
+          <div className="column-header">
+            <h3>SIDE VIEW</h3>
+          </div>
+          <div className="image-container">
+            {job.simulation2_url ? (
+              <img src={job.simulation2_url} alt="Simulation 2 - Side" />
+            ) : (
+              <div className="no-image">
+                <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span>No simulation</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
