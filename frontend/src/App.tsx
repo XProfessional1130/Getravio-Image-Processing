@@ -50,7 +50,7 @@ function App() {
       id: `preview-${Date.now()}`,
       region: 'gluteal',
       scenario: 'projection-level-1',
-      status: 'queued',
+      status: 'draft',
       message: '',
       original_image_url: imageUrl,
       is_favorite: false,
@@ -64,6 +64,17 @@ function App() {
     if (!uploadedFile) {
       alert("Please upload an image first");
       return;
+    }
+
+    // Immediately set status to queued to disable button and show loading
+    if (currentJob) {
+      setCurrentJob({
+        ...currentJob,
+        status: 'queued',
+        region: jobData.region,
+        scenario: jobData.scenario,
+        message: jobData.message
+      });
     }
 
     try {
@@ -85,10 +96,50 @@ function App() {
       setCurrentPage('result');
 
       console.log('Job created successfully:', createdJob);
+
+      // Start polling for job status updates
+      startPollingJob(createdJob.id);
     } catch (error: any) {
       console.error('Job submission error:', error);
       alert(error.response?.data?.error || 'Failed to submit job. Please try again.');
+
+      // Reset to draft status on error
+      if (currentJob) {
+        setCurrentJob({
+          ...currentJob,
+          status: 'draft'
+        });
+      }
     }
+  };
+
+  // Poll job status until completed or failed
+  const startPollingJob = (jobId: string) => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const updatedJob = await jobAPI.getJob(jobId);
+
+        // Update current job with latest status
+        setCurrentJob(updatedJob);
+        if (selectedJob?.id === jobId) {
+          setSelectedJob(updatedJob);
+        }
+
+        // Stop polling if job is completed or failed
+        if (updatedJob.status === 'completed' || updatedJob.status === 'failed') {
+          clearInterval(pollInterval);
+          console.log(`Job ${jobId} finished with status: ${updatedJob.status}`);
+        }
+      } catch (error) {
+        console.error('Error polling job status:', error);
+        clearInterval(pollInterval);
+      }
+    }, 3000); // Poll every 3 seconds
+
+    // Cleanup after 5 minutes (prevent infinite polling)
+    setTimeout(() => {
+      clearInterval(pollInterval);
+    }, 5 * 60 * 1000);
   };
 
   const handleViewJob = (job: Job) => {
