@@ -210,17 +210,21 @@ class JobViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         # Automatically set the user to the current user
-        # Phase 0: Mark as completed immediately (using sample images)
-        # In production, this will be 'queued' and processed by background workers
         logger.info(f"Creating job for user: {self.request.user.username}")
 
-        job = serializer.save(user=self.request.user, status='completed')
+        # Save job with 'queued' status
+        job = serializer.save(user=self.request.user, status='queued')
 
         # Log storage information
         if job.original_image:
             logger.info(f"Original image uploaded: {job.original_image.name}")
             logger.info(f"Original image URL: {job.original_image.url}")
             logger.info(f"Storage backend: {job.original_image.storage.__class__.__name__}")
+
+        # Queue the job for async processing with Celery (using local ML)
+        from .local_tasks import process_image_generation_local
+        task = process_image_generation_local.delay(job.id)
+        logger.info(f"Job {job.id} queued for LOCAL processing (Celery task ID: {task.id})")
 
         return job
 

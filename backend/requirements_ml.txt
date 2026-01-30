@@ -1,0 +1,26 @@
+# Machine Learning Dependencies for Image Generation
+# Install separately from main requirements to avoid conflicts
+
+# Core ML frameworks
+torch>=2.1.0
+torchvision>=0.16.0
+--extra-index-url https://download.pytorch.org/whl/cu121
+
+# Diffusion models
+diffusers>=0.25.0
+transformers>=4.36.0
+accelerate>=0.25.0
+safetensors>=0.4.0
+
+# Image preprocessing
+opencv-python>=4.8.0
+mediapipe==0.10.8
+pillow>=10.0.0
+numpy>=1.24.0
+
+# ControlNet preprocessing
+controlnet-aux==0.0.7
+
+# Optional: Performance optimization
+# xformers>=0.0.23  # Faster attention, requires compatible CUDA
+# triton>=2.1.0     # GPU kernels optimization
