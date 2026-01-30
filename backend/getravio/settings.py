@@ -174,3 +174,32 @@ else:
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
     print(f"\n[OK] Local File Storage Enabled")
     print(f"  Media Root: {BASE_DIR / 'media'}")
+
+# ============================================================================
+# CELERY CONFIGURATION (for async task processing)
+# ============================================================================
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes max per task
+
+print(f"\n[OK] Celery Configuration")
+print(f"  Broker: {CELERY_BROKER_URL}")
+print(f"  Result Backend: {CELERY_RESULT_BACKEND}")
+
+# ============================================================================
+# REPLICATE API CONFIGURATION (for AI image generation)
+# ============================================================================
+REPLICATE_API_TOKEN = os.getenv('REPLICATE_API_TOKEN', '')
+
+if REPLICATE_API_TOKEN:
+    print(f"\n[OK] Replicate API Configured")
+    print(f"  Token: {REPLICATE_API_TOKEN[:8]}...")
+else:
+    print(f"\n[WARNING] Replicate API Token not configured")
+    print(f"  Set REPLICATE_API_TOKEN in .env file")
+    print(f"  Get token from: https://replicate.com/account/api-tokens")
