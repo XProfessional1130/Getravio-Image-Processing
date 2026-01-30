@@ -161,8 +161,9 @@ export interface Job {
   id: string;
   region: string;
   scenario: string;
-  status: 'queued' | 'processing' | 'completed' | 'failed';
+  status: 'draft' | 'queued' | 'processing' | 'completed' | 'failed';
   message?: string;
+  error_message?: string;
   original_image_url?: string;
   simulation1_url?: string;
   simulation2_url?: string;

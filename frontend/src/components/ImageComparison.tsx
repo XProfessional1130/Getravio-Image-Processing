@@ -9,7 +9,7 @@ interface ImageComparisonProps {
 }
 
 function ImageComparison({ job, onHandleJobSubmit, onImageUpload }: ImageComparisonProps) {
-  const [showLabels, setShowLabels] = useState<boolean>(true);
+  const [showLabels] = useState<boolean>(true);
 
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -32,15 +32,17 @@ function ImageComparison({ job, onHandleJobSubmit, onImageUpload }: ImageCompari
   //   setShowLabels(!showLabels);
   // };
 
+  const isProcessing = job?.status === 'queued' || job?.status === 'processing';
+
   return (
-    <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg shadow-blue-900/5 border border-blue-100/50">
-      {job && (
-        <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 border-b border-slate-100/80">
-          <span className={`inline-block px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs font-bold tracking-wide shadow-sm ${
-              job.status === 'queued' ? 'bg-amber-500 text-white shadow-amber-400/30' :
-              job.status === 'processing' ? 'bg-blue-600 text-white shadow-blue-500/30' :
-                job.status === 'completed' ? 'bg-green-600 text-white shadow-green-500/30' :
-                  'bg-red-600 text-white shadow-red-500/30'
+    <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg shadow-blue-900/5 border border-blue-100/50 animate-fadeIn">
+      {job && job.status !== 'draft' && (
+        <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 border-b border-slate-100/80 animate-slideDown">
+          <span className={`inline-block px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs font-bold tracking-wide shadow-sm transition-all duration-300 ${
+              job.status === 'queued' ? 'bg-amber-500 text-white shadow-amber-400/30 animate-pulse' :
+              job.status === 'processing' ? 'bg-blue-600 text-white shadow-blue-500/30 animate-pulse' :
+                job.status === 'completed' ? 'bg-green-600 text-white shadow-green-500/30 animate-bounceIn' :
+                  'bg-red-600 text-white shadow-red-500/30 animate-shakeX'
             }`}>
             {job.status.toUpperCase()}
           </span>
@@ -50,22 +52,22 @@ function ImageComparison({ job, onHandleJobSubmit, onImageUpload }: ImageCompari
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 p-4 sm:p-6 lg:p-8">
         {/* Images Grid */}
         <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-          <div className="space-y-2 sm:space-y-3">
+          <div className="space-y-2 sm:space-y-3 animate-fadeIn">
             {showLabels && <h3 className="text-xs sm:text-sm font-bold text-blue-900/80 tracking-wide">ORIGINAL</h3>}
-            <div className="w-full aspect-[3/4] bg-gradient-to-br from-slate-50 to-blue-50/40 rounded-xl sm:rounded-2xl border-2 border-dashed border-blue-200/60 flex items-center justify-center overflow-hidden relative transition-all duration-300 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-500/10">
+            <div className="w-full aspect-[3/4] bg-gradient-to-br from-slate-50 to-blue-50/40 rounded-xl sm:rounded-2xl border-2 border-dashed border-blue-200/60 flex items-center justify-center overflow-hidden relative transition-all duration-500 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-500/10 hover:scale-[1.02] group">
               {job?.original_image_url ? (
-                <div className="w-full h-full relative group">
-                  <img src={job.original_image_url} alt="Original" className="w-full h-full object-cover rounded-lg sm:rounded-xl" />
-                  <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer flex items-center justify-center">
+                <div className="w-full h-full relative">
+                  <img src={job.original_image_url} alt="Original" className="w-full h-full object-cover rounded-lg sm:rounded-xl animate-fadeIn" />
+                  <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer flex items-center justify-center backdrop-blur-sm">
                     <input
                       type="file"
                       accept="image/*"
                       onChange={handleImageUpload}
-                      disabled={job?.status === 'processing'}
+                      disabled={isProcessing}
                       className="hidden"
                     />
-                    <div className="text-white text-center">
-                      <svg className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="text-white text-center transform group-hover:scale-110 transition-transform duration-300">
+                      <svg className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                       </svg>
                       <span className="text-sm font-semibold">Change Image</span>
@@ -74,41 +76,51 @@ function ImageComparison({ job, onHandleJobSubmit, onImageUpload }: ImageCompari
                 </div>
               ) : (
                 <label
-                  className={`w-full h-full flex flex-col items-center justify-center gap-1.5 sm:gap-2 ${job?.status === 'processing' ? 'cursor-not-allowed' : 'cursor-pointer'
-                    } transition-colors px-4`}
+                  className={`w-full h-full flex flex-col items-center justify-center gap-1.5 sm:gap-2 ${isProcessing ? 'cursor-not-allowed' : 'cursor-pointer hover:scale-105'
+                    } transition-all duration-300 px-4`}
                 >
                   <input
                     type="file"
                     accept="image/*"
                     onChange={handleImageUpload}
-                    disabled={job?.status === 'processing'}
+                    disabled={isProcessing}
                     className="hidden"
                   />
-                  <svg className="w-10 h-10 sm:w-12 sm:h-12 text-blue-400/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-10 h-10 sm:w-12 sm:h-12 text-blue-400/70 group-hover:text-blue-500 group-hover:scale-110 transition-all duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  <span className="text-blue-600 text-xs sm:text-sm font-semibold text-center">
-                    {job?.status === 'processing' ? 'Processing...' : 'Click to upload image'}
+                  <span className="text-blue-600 text-xs sm:text-sm font-semibold text-center group-hover:text-blue-700 transition-colors">
+                    {isProcessing ? 'Processing...' : 'Click to upload image'}
                   </span>
-                  <span className="text-xs text-slate-400">PNG, JPG up to 10MB</span>
+                  <span className="text-xs text-slate-400 group-hover:text-slate-500 transition-colors">PNG, JPG up to 10MB</span>
                 </label>
               )}
             </div>
           </div>
 
-          <div className="space-y-2 sm:space-y-3">
+          <div className="space-y-2 sm:space-y-3 animate-fadeIn" style={{ animationDelay: '0.1s' }}>
             {showLabels && <h3 className="text-xs sm:text-sm font-bold text-blue-900/80 tracking-wide">REAR</h3>}
-            <div className="w-full aspect-[3/4] bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-xl sm:rounded-2xl border border-blue-100/50 flex items-center justify-center overflow-hidden shadow-md shadow-blue-900/5 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10">
+            <div className="w-full aspect-[3/4] bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-xl sm:rounded-2xl border border-blue-100/50 flex items-center justify-center overflow-hidden shadow-md shadow-blue-900/5 transition-all duration-500 hover:shadow-xl hover:shadow-blue-500/20 hover:scale-[1.02] group">
               {job && job.simulation1_url ? (
-                <img src={job.simulation1_url} alt="Simulation 1" className="w-full h-full object-cover" />
+                <img src={job.simulation1_url} alt="Simulation 1" className="w-full h-full object-cover animate-fadeIn hover:scale-105 transition-transform duration-500" />
               ) : job && (job.status === 'queued' || job.status === 'processing') ? (
-                <div className="flex flex-col items-center gap-1.5 sm:gap-2">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-3 sm:border-4 border-blue-200 border-t-blue-600 animate-spin" />
-                  <span className="text-blue-600/70 text-xs sm:text-sm font-semibold">Awaiting...</span>
+                <div className="flex flex-col items-center gap-2 sm:gap-3 animate-pulse">
+                  <div className="relative">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin" />
+                    <div className="absolute inset-0 w-12 h-12 sm:w-16 sm:h-16 rounded-full border-4 border-transparent border-b-blue-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1s' }} />
+                  </div>
+                  <div className="text-center space-y-1">
+                    <span className="text-blue-600 text-xs sm:text-sm font-bold block animate-pulse">Generating...</span>
+                    <div className="flex gap-1 justify-center">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center gap-2 px-4">
-                  <svg className="w-12 h-12 sm:w-16 sm:h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex flex-col items-center gap-2 px-4 group-hover:scale-110 transition-transform duration-300">
+                  <svg className="w-12 h-12 sm:w-16 sm:h-16 text-slate-300 group-hover:text-slate-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   <span className="text-slate-400 text-xs sm:text-sm font-medium text-center">No simulation yet</span>
@@ -117,19 +129,29 @@ function ImageComparison({ job, onHandleJobSubmit, onImageUpload }: ImageCompari
             </div>
           </div>
 
-          <div className="space-y-2 sm:space-y-3">
+          <div className="space-y-2 sm:space-y-3 animate-fadeIn" style={{ animationDelay: '0.2s' }}>
             {showLabels && <h3 className="text-xs sm:text-sm font-bold text-blue-900/80 tracking-wide">SIDE</h3>}
-            <div className="w-full aspect-[3/4] bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-xl sm:rounded-2xl border border-blue-100/50 flex items-center justify-center overflow-hidden shadow-md shadow-blue-900/5 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10">
+            <div className="w-full aspect-[3/4] bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-xl sm:rounded-2xl border border-blue-100/50 flex items-center justify-center overflow-hidden shadow-md shadow-blue-900/5 transition-all duration-500 hover:shadow-xl hover:shadow-purple-500/20 hover:scale-[1.02] group">
               {job && job.simulation2_url ? (
-                <img src={job.simulation2_url} alt="Simulation 2" className="w-full h-full object-cover" />
+                <img src={job.simulation2_url} alt="Simulation 2" className="w-full h-full object-cover animate-fadeIn hover:scale-105 transition-transform duration-500" />
               ) : job && (job.status === 'queued' || job.status === 'processing') ? (
-                <div className="flex flex-col items-center gap-1.5 sm:gap-2">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-3 sm:border-4 border-purple-200 border-t-purple-600 animate-spin" />
-                  <span className="text-purple-600/70 text-xs sm:text-sm font-semibold">Awaiting...</span>
+                <div className="flex flex-col items-center gap-2 sm:gap-3 animate-pulse">
+                  <div className="relative">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-4 border-purple-200 border-t-purple-600 animate-spin" />
+                    <div className="absolute inset-0 w-12 h-12 sm:w-16 sm:h-16 rounded-full border-4 border-transparent border-b-purple-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1s' }} />
+                  </div>
+                  <div className="text-center space-y-1">
+                    <span className="text-purple-600 text-xs sm:text-sm font-bold block animate-pulse">Generating...</span>
+                    <div className="flex gap-1 justify-center">
+                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center gap-2 px-4">
-                  <svg className="w-12 h-12 sm:w-16 sm:h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex flex-col items-center gap-2 px-4 group-hover:scale-110 transition-transform duration-300">
+                  <svg className="w-12 h-12 sm:w-16 sm:h-16 text-slate-300 group-hover:text-slate-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   <span className="text-slate-400 text-xs sm:text-sm font-medium text-center">No simulation yet</span>
@@ -140,8 +162,73 @@ function ImageComparison({ job, onHandleJobSubmit, onImageUpload }: ImageCompari
         </div>
 
         {/* Control Panel - Right Side */}
-        <div className="w-full lg:w-72 flex flex-col">
-          <Upload onSubmit={onHandleJobSubmit} />
+        <div className="w-full lg:w-72 flex flex-col gap-4">
+          <Upload onSubmit={onHandleJobSubmit} isProcessing={isProcessing} />
+
+          {/* Processing Status */}
+          {job && isProcessing && (
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 animate-fadeIn animate-glow">
+              <div className="flex items-start gap-3">
+                <div className="relative">
+                  <svg className="w-6 h-6 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-bold text-blue-900 mb-1">Processing</h4>
+                  <p className="text-xs text-blue-700 leading-relaxed">
+                    AI is generating your simulation images. This may take 30-60 seconds...
+                  </p>
+                  <div className="mt-3 flex gap-1">
+                    <div className="h-1 flex-1 bg-blue-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-600 rounded-full animate-pulse" style={{ width: '70%' }}></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Error Message Display */}
+          {job && job.status === 'failed' && job.error_message && (
+            <div className="bg-gradient-to-br from-red-50 to-pink-50 border-2 border-red-200 rounded-xl p-4 animate-shakeX">
+              <div className="flex items-start gap-3">
+                <svg className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="flex-1">
+                  <h4 className="text-sm font-bold text-red-900 mb-2">Generation Failed</h4>
+                  <p className="text-xs text-red-700 leading-relaxed mb-3">
+                    {job.error_message}
+                  </p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="text-xs font-semibold text-red-600 hover:text-red-800 underline hover:no-underline transition-all"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Success Message */}
+          {job && job.status === 'completed' && (job.simulation1_url || job.simulation2_url) && (
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 animate-bounceIn">
+              <div className="flex items-start gap-3">
+                <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="flex-1">
+                  <h4 className="text-sm font-bold text-green-900 mb-1">Success!</h4>
+                  <p className="text-xs text-green-700 leading-relaxed">
+                    Your simulation has been generated successfully. View the results above.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Image Navigation */}
           {/* <div className="border border-gray-200 rounded-lg p-4">
