@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useAuth } from "./context/AuthContext";
 import { jobAPI, Job } from "./services/api";
+import { useJobWebSocket } from "./hooks/useJobWebSocket";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import ImageComparison from "./components/ImageComparison";
@@ -18,6 +19,29 @@ function App() {
   const [currentJob, setCurrentJob] = useState<Job | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+
+  // WebSocket handler for real-time job updates
+  const handleJobUpdate = useCallback((updatedJob: Job) => {
+    console.log('[App] Received job update via WebSocket:', updatedJob);
+
+    // Update current job if it matches
+    if (currentJob?.id === updatedJob.id) {
+      setCurrentJob(updatedJob);
+    }
+
+    // Update selected job if it matches
+    if (selectedJob?.id === updatedJob.id) {
+      setSelectedJob(updatedJob);
+    }
+  }, [currentJob?.id, selectedJob?.id]);
+
+  // Connect to WebSocket for real-time updates (only when authenticated)
+  useJobWebSocket({
+    onJobUpdate: handleJobUpdate,
+    onConnect: () => console.log('[App] WebSocket connected'),
+    onDisconnect: () => console.log('[App] WebSocket disconnected'),
+    onError: (error) => console.error('[App] WebSocket error:', error)
+  });
 
   const handleLogin = async (credentials: { email: string; password: string }) => {
     await login(credentials);
@@ -97,8 +121,7 @@ function App() {
 
       console.log('Job created successfully:', createdJob);
 
-      // Start polling for job status updates
-      startPollingJob(createdJob.id);
+      // No need to poll - WebSocket will send real-time updates
     } catch (error: any) {
       console.error('Job submission error:', error);
       alert(error.response?.data?.error || 'Failed to submit job. Please try again.');
@@ -111,35 +134,6 @@ function App() {
         });
       }
     }
-  };
-
-  // Poll job status until completed or failed
-  const startPollingJob = (jobId: string) => {
-    const pollInterval = setInterval(async () => {
-      try {
-        const updatedJob = await jobAPI.getJob(jobId);
-
-        // Update current job with latest status
-        setCurrentJob(updatedJob);
-        if (selectedJob?.id === jobId) {
-          setSelectedJob(updatedJob);
-        }
-
-        // Stop polling if job is completed or failed
-        if (updatedJob.status === 'completed' || updatedJob.status === 'failed') {
-          clearInterval(pollInterval);
-          console.log(`Job ${jobId} finished with status: ${updatedJob.status}`);
-        }
-      } catch (error) {
-        console.error('Error polling job status:', error);
-        clearInterval(pollInterval);
-      }
-    }, 3000); // Poll every 3 seconds
-
-    // Cleanup after 5 minutes (prevent infinite polling)
-    setTimeout(() => {
-      clearInterval(pollInterval);
-    }, 5 * 60 * 1000);
   };
 
   const handleViewJob = (job: Job) => {
