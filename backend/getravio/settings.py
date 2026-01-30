@@ -21,6 +21,7 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 # Application definition
 INSTALLED_APPS = [
+    'daphne',  # Must be first for WebSocket support
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -31,6 +32,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'corsheaders',
     'storages',
+    'channels',  # WebSocket support
     'api',
 ]
 
@@ -174,3 +176,18 @@ else:
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
     print(f"\n[OK] Local File Storage Enabled")
     print(f"  Media Root: {BASE_DIR / 'media'}")
+
+# Django Channels Configuration for WebSocket Support
+ASGI_APPLICATION = 'getravio.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [(os.getenv('REDIS_HOST', 'localhost'), int(os.getenv('REDIS_PORT', 6379)))],
+        },
+    },
+}
+
+print(f"\n[OK] Django Channels (WebSocket) Enabled")
+print(f"  Redis Host: {os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', 6379)}")
