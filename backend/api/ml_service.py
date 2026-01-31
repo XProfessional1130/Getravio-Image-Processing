@@ -1,26 +1,51 @@
 """
 ML service using Diffusers library for gluteal enhancement simulation
-Runs SDXL + ControlNet on GPU (production)
+Supports two models:
+- Development: stable-diffusion-1-5 (lighter, faster, CPU-friendly)
+- Production: stabilityai/stable-diffusion-xl-base-1.0 (higher quality, GPU required)
 """
 import torch
-from diffusers import (
-    StableDiffusionXLControlNetImg2ImgPipeline,
-    ControlNetModel,
-    AutoencoderKL
-)
 from PIL import Image
 import numpy as np
 import logging
 from pathlib import Path
 import os
+import json
 
 logger = logging.getLogger(__name__)
+
+# Model selection via environment variable
+ML_MODEL = os.getenv('ML_MODEL', 'sdxl')  # 'sd21' for dev, 'sdxl' for prod
+
+# Load prompts from JSON file
+PROMPTS_FILE = Path(__file__).parent / 'prompts.json'
+
+
+def load_prompts():
+    """Load prompts configuration from JSON file"""
+    try:
+        with open(PROMPTS_FILE, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Failed to load prompts.json: {e}")
+        # Return minimal defaults
+        return {
+            "dev": {"prompt_template": "photo, realistic", "negative_prompt": "bad", "inference_steps": 15},
+            "prod": {"prompt_template": "photo, realistic", "negative_prompt": "bad", "inference_steps": 30},
+            "scenarios": {},
+            "views": {"rear": "back", "side": "side"},
+            "default_strength": 0.50
+        }
+
+
+PROMPTS = load_prompts()
 
 
 class ImageGenerationService:
     """
-    Image generation service using SDXL + ControlNet
-    Requires GPU with 12GB+ VRAM for optimal performance
+    Image generation service with model selection
+    - sd21: Stable Diffusion 2.1 (development, ~5GB VRAM or CPU)
+    - sdxl: SDXL + ControlNet (production, requires 12GB+ VRAM)
     """
 
     def __init__(self, device="cuda", model_cache_dir=None):
@@ -33,33 +58,73 @@ class ImageGenerationService:
         """
         self.device = device
         self.model_cache_dir = model_cache_dir or os.path.expanduser("~/.cache/huggingface")
+        self.model_type = ML_MODEL
 
         # Check if CUDA is available
         if device == "cuda" and not torch.cuda.is_available():
-            logger.warning("CUDA not available, falling back to CPU (will be very slow)")
+            logger.warning("CUDA not available, falling back to CPU")
             self.device = "cpu"
+
+        # For SD 2.1 on CPU, it's more feasible
+        if self.model_type == 'sd21' and self.device == "cpu":
+            logger.info("Using SD 2.1 on CPU (development mode)")
 
         self.pipe = None
         self.pose_processor = None
 
-        logger.info(f"ImageGenerationService initialized (device={self.device})")
+        logger.info(f"ImageGenerationService initialized (model={self.model_type}, device={self.device})")
 
-    def _load_pipeline(self):
-        """
-        Lazy load the SDXL pipeline with ControlNet
-        Only loads when first needed to save memory
-        """
-        if self.pipe is not None:
-            return
+    def _load_pipeline_sd21(self):
+        """Load Stable Diffusion 1.5 pipeline (development/lighter)"""
+        from diffusers import StableDiffusionImg2ImgPipeline
+
+        logger.info("Loading Stable Diffusion 1.5 pipeline...")
+
+        dtype = torch.float16 if self.device == "cuda" else torch.float32
+
+        # Using SD 1.5 as it's openly available without gating
+        self.pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
+            "runwayml/stable-diffusion-v1-5",
+            torch_dtype=dtype,
+            cache_dir=self.model_cache_dir,
+            safety_checker=None,
+            requires_safety_checker=False,
+        )
+
+        self.pipe = self.pipe.to(self.device)
+
+        # Memory optimizations
+        if self.device == "cuda":
+            self.pipe.enable_attention_slicing()
+            try:
+                self.pipe.enable_xformers_memory_efficient_attention()
+                logger.info("✓ xformers enabled")
+            except Exception:
+                logger.info("xformers not available")
+        else:
+            # CPU optimizations
+            self.pipe.enable_attention_slicing(1)
+
+        logger.info("✓ SD 1.5 pipeline loaded successfully!")
+
+    def _load_pipeline_sdxl(self):
+        """Load SDXL pipeline with ControlNet (production)"""
+        from diffusers import (
+            StableDiffusionXLControlNetImg2ImgPipeline,
+            ControlNetModel,
+            AutoencoderKL
+        )
 
         logger.info("Loading SDXL pipeline... (this may take 2-5 minutes on first run)")
 
         try:
+            dtype = torch.float16 if self.device == "cuda" else torch.float32
+
             # Load ControlNet for pose preservation
             logger.info("Loading ControlNet model...")
             controlnet = ControlNetModel.from_pretrained(
                 "thibaud/controlnet-openpose-sdxl-1.0",
-                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+                torch_dtype=dtype,
                 cache_dir=self.model_cache_dir,
             )
 
@@ -67,7 +132,7 @@ class ImageGenerationService:
             logger.info("Loading VAE...")
             vae = AutoencoderKL.from_pretrained(
                 "madebyollin/sdxl-vae-fp16-fix",
-                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+                torch_dtype=dtype,
                 cache_dir=self.model_cache_dir,
             )
 
@@ -77,7 +142,7 @@ class ImageGenerationService:
                 "stabilityai/stable-diffusion-xl-base-1.0",
                 controlnet=controlnet,
                 vae=vae,
-                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+                torch_dtype=dtype,
                 cache_dir=self.model_cache_dir,
             )
 
@@ -90,21 +155,35 @@ class ImageGenerationService:
                 self.pipe.enable_model_cpu_offload()
                 self.pipe.enable_vae_tiling()
 
-                # Try to enable xformers if available
                 try:
                     self.pipe.enable_xformers_memory_efficient_attention()
                     logger.info("✓ xformers enabled for faster inference")
-                except Exception as e:
+                except Exception:
                     logger.info("xformers not available, using default attention")
 
             logger.info("✓ SDXL pipeline loaded successfully!")
 
         except Exception as e:
-            logger.error(f"Failed to load pipeline: {e}", exc_info=True)
+            logger.error(f"Failed to load SDXL pipeline: {e}", exc_info=True)
             raise RuntimeError(f"Could not load SDXL pipeline: {e}")
 
+    def _load_pipeline(self):
+        """Lazy load the appropriate pipeline based on model type"""
+        if self.pipe is not None:
+            return
+
+        if self.model_type == 'sd21':
+            self._load_pipeline_sd21()
+        else:
+            self._load_pipeline_sdxl()
+
     def _load_pose_processor(self):
-        """Load OpenPose processor for ControlNet"""
+        """Load OpenPose processor for ControlNet (SDXL only)"""
+        if self.model_type == 'sd21':
+            # SD 2.1 doesn't use ControlNet
+            self.pose_processor = False
+            return
+
         if self.pose_processor is not None:
             return
 
@@ -114,114 +193,46 @@ class ImageGenerationService:
             logger.info("✓ Pose processor loaded")
         except Exception as e:
             logger.warning(f"Failed to load pose processor: {e}")
-            logger.warning("Pose extraction will be skipped (model will work without ControlNet)")
-            # Set to False to indicate it failed
             self.pose_processor = False
 
     def build_prompt(self, region: str, scenario: str, view: str, message: str = "") -> dict:
-        """
-        Build comprehensive prompt configuration for generation
-        Same as Replicate version for consistency
-        """
-        # Scenario-based enhancement descriptions
-        scenario_config = {
-            "projection-level-1": {
-                "description": "very subtle gluteal projection enhancement, minimal volume increase, natural and conservative aesthetic result",
-                "strength": 0.35,
-            },
-            "projection-level-2": {
-                "description": "moderate glute and hip projection, balanced enhancement, realistic and proportional result",
-                "strength": 0.50,
-            },
-            "projection-level-3": {
-                "description": "stronger glute projection while maintaining anatomical realism, smooth contours, natural appearance",
-                "strength": 0.65,
-            },
-            "curvature": {
-                "description": "add gentle curvature to the gluteal region, create smooth and natural roundness, preserve body silhouette",
-                "strength": 0.50,
-            },
-            "hip-enhancement": {
-                "description": "enhance glute and hip projection subtly, create harmonious waist-to-hip transition, maintain realistic anatomy",
-                "strength": 0.50,
-            },
-            "firmness": {
-                "description": "improve glute firmness and contour, reduce sagging appearance, maintain realistic skin texture",
-                "strength": 0.55,
-            },
-            "lift": {
-                "description": "lift gluteal contour slightly, improve lower glute definition, maintain natural anatomy",
-                "strength": 0.50,
-            },
-            "symmetry": {
-                "description": "correct mild gluteal asymmetry subtly, balance left and right sides while preserving original anatomy",
-                "strength": 0.45,
-            },
-            "cellulite": {
-                "description": "enhance gluteal projection while preserving realistic skin texture, maintain visible cellulite characteristics",
-                "strength": 0.50,
-            },
-            "contour-smoothing": {
-                "description": "improve glute shape and projection while maintaining natural fat distribution",
-                "strength": 0.50,
-            },
-        }
+        """Build prompt configuration from prompts.json"""
+        # Get scenario config
+        scenario_config = PROMPTS.get("scenarios", {}).get(scenario, {})
+        strength = scenario_config.get("strength", PROMPTS.get("default_strength", 0.50))
+        scenario_desc = scenario_config.get("description", "enhancement")
 
-        view_descriptions = {
-            "rear": "posterior view, back angle, full body rear view, emphasize gluteal region",
-            "side": "lateral profile view, side angle, emphasize posterior projection visible from side profile",
-        }
+        # Get view description
+        view_desc = PROMPTS.get("views", {}).get(view, view)
 
-        config = scenario_config.get(scenario, scenario_config["projection-level-2"])
-        view_desc = view_descriptions.get(view, view_descriptions["rear"])
+        # Select dev or prod prompts
+        mode = "dev" if self.model_type == 'sd21' else "prod"
+        mode_config = PROMPTS.get(mode, {})
 
-        prompt = f"""
-        high quality medical photography, anatomically accurate human body,
-        natural lighting, realistic skin texture and detail,
-        {config["description"]},
-        {view_desc},
-        professional medical documentation style,
-        preserve body identity strictly, maintain exact silhouette and pose,
-        photorealistic result, natural appearance
-        """
+        # Build prompt from template
+        prompt_template = mode_config.get("prompt_template", "photo, realistic")
+        prompt = prompt_template.format(
+            view=view_desc,
+            scenario_desc=scenario_desc,
+            region=region
+        )
 
-        if message and message.strip():
-            prompt += f", {message.strip()}"
-
-        negative_prompt = """
-        deformed body, distorted proportions, unrealistic anatomy, artificial appearance,
-        cartoon, anime style, oversaturated colors, low quality, blurry, grainy,
-        multiple people, extra limbs, cropped body parts, incomplete body,
-        inappropriate content, nudity, overprocessed, fake looking, plastic appearance,
-        bad anatomy, poorly drawn, awkward pose, wrong proportions,
-        text, watermark, signature
-        """
+        negative_prompt = mode_config.get("negative_prompt", "bad quality")
 
         return {
             "prompt": " ".join(prompt.split()),
             "negative_prompt": " ".join(negative_prompt.split()),
-            "strength": config["strength"],
+            "strength": strength,
         }
 
     def extract_pose(self, image: Image.Image) -> Image.Image:
-        """
-        Extract pose from image for ControlNet conditioning
-
-        Args:
-            image: Input PIL Image
-
-        Returns:
-            Pose image for ControlNet (or blank if processor unavailable)
-        """
+        """Extract pose from image for ControlNet conditioning (SDXL only)"""
         self._load_pose_processor()
 
-        # Check if pose processor failed to load
         if self.pose_processor is False:
-            logger.debug("Pose processor not available, returning blank image")
             return Image.new('RGB', image.size, color='white')
 
         try:
-            # Extract pose without hands and face for body focus
             pose_image = self.pose_processor(
                 image,
                 hand_and_face=False,
@@ -232,7 +243,6 @@ class ImageGenerationService:
             return pose_image
         except Exception as e:
             logger.error(f"Pose extraction failed: {e}")
-            # Return blank image as fallback (no pose conditioning)
             return Image.new('RGB', image.size, color='white')
 
     def generate_image(
@@ -245,55 +255,55 @@ class ImageGenerationService:
         num_inference_steps: int = 30,
         guidance_scale: float = 7.5,
     ) -> Image.Image:
-        """
-        Generate enhanced image using SDXL pipeline
-
-        Args:
-            image: Input PIL Image
-            region: Body region (e.g., "gluteal")
-            scenario: Enhancement scenario
-            view: Camera angle ("rear" or "side")
-            message: Optional user message
-            num_inference_steps: Quality (default 30)
-            guidance_scale: Prompt adherence (default 7.5)
-
-        Returns:
-            Enhanced PIL Image
-        """
-        # Load pipeline if not already loaded
+        """Generate enhanced image using the configured pipeline"""
         self._load_pipeline()
 
-        logger.info(f"Generating {view} view for {scenario}")
+        logger.info(f"Generating {view} view for {scenario} using {self.model_type}")
 
         try:
-            # Resize image to SDXL native resolution
             original_size = image.size
-            image = image.resize((1024, 1024), Image.LANCZOS)
 
-            # Extract pose for ControlNet
-            logger.info("Extracting pose...")
-            pose_image = self.extract_pose(image)
+            # Resize based on model
+            if self.model_type == 'sdxl':
+                target_size = (1024, 1024)
+            else:
+                target_size = (512, 512)  # SD 1.5 native resolution
+
+            image = image.resize(target_size, Image.LANCZOS)
 
             # Build prompts
             prompt_config = self.build_prompt(region, scenario, view, message)
 
             logger.info(f"Running inference (steps={num_inference_steps})...")
 
-            # Generate
-            output = self.pipe(
-                prompt=prompt_config["prompt"],
-                negative_prompt=prompt_config["negative_prompt"],
-                image=image,
-                control_image=pose_image,
-                num_inference_steps=num_inference_steps,
-                guidance_scale=guidance_scale,
-                strength=prompt_config["strength"],
-                controlnet_conditioning_scale=0.8,  # How much to follow pose
-            )
+            if self.model_type == 'sdxl':
+                # SDXL with ControlNet
+                pose_image = self.extract_pose(image)
+
+                output = self.pipe(
+                    prompt=prompt_config["prompt"],
+                    negative_prompt=prompt_config["negative_prompt"],
+                    image=image,
+                    control_image=pose_image,
+                    num_inference_steps=num_inference_steps,
+                    guidance_scale=guidance_scale,
+                    strength=prompt_config["strength"],
+                    controlnet_conditioning_scale=0.8,
+                )
+            else:
+                # SD 2.1 (simpler img2img)
+                output = self.pipe(
+                    prompt=prompt_config["prompt"],
+                    negative_prompt=prompt_config["negative_prompt"],
+                    image=image,
+                    num_inference_steps=num_inference_steps,
+                    guidance_scale=guidance_scale,
+                    strength=prompt_config["strength"],
+                )
 
             result_image = output.images[0]
 
-            # Resize back to original size if needed
+            # Resize back to original size
             if result_image.size != original_size:
                 result_image = result_image.resize(original_size, Image.LANCZOS)
 
@@ -313,21 +323,8 @@ class ImageGenerationService:
         num_inference_steps: int = 30,
         guidance_scale: float = 7.5,
     ) -> dict:
-        """
-        Generate both rear and side views
-
-        Args:
-            image: Input PIL Image
-            region: Body region
-            scenario: Enhancement scenario
-            message: Optional user message
-            num_inference_steps: Quality (default 30)
-            guidance_scale: Prompt adherence (default 7.5)
-
-        Returns:
-            Dict with 'rear' and 'side' PIL Images
-        """
-        logger.info(f"Generating both views for {scenario}")
+        """Generate both rear and side views"""
+        logger.info(f"Generating both views for {scenario} using {self.model_type}")
 
         rear_image = self.generate_image(
             image=image,

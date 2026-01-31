@@ -75,13 +75,19 @@ def process_image_generation(self, job_id):
         ml_service = ImageGenerationService(device="cuda")
 
         # Generate both simulation views
-        logger.info(f"[Job {job_id}] Generating rear and side views...")
+        # Load inference steps from prompts.json
+        from .ml_service import PROMPTS
+        import os
+        mode = "dev" if os.getenv('ML_MODEL', 'sdxl') == 'sd21' else "prod"
+        num_steps = PROMPTS.get(mode, {}).get("inference_steps", 20)
+
+        logger.info(f"[Job {job_id}] Generating rear and side views (steps={num_steps})...")
         results = ml_service.generate_both_views(
             image=original_image,
             region=job.region,
             scenario=job.scenario,
             message=job.message or '',
-            num_inference_steps=30,
+            num_inference_steps=num_steps,
             guidance_scale=7.5,
         )
 

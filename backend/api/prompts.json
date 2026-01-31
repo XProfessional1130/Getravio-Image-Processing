@@ -1,0 +1,59 @@
+{
+  "dev": {
+    "prompt_template": "photo of person, {view} view, realistic, high quality",
+    "negative_prompt": "deformed, blurry, bad anatomy",
+    "inference_steps": 15
+  },
+  "prod": {
+    "prompt_template": "medical photography, realistic body, {scenario_desc}, {view} view, photorealistic",
+    "negative_prompt": "deformed, cartoon, low quality, blurry, bad anatomy, watermark",
+    "inference_steps": 30
+  },
+  "scenarios": {
+    "projection-level-1": {
+      "description": "subtle enhancement",
+      "strength": 0.35
+    },
+    "projection-level-2": {
+      "description": "moderate enhancement",
+      "strength": 0.50
+    },
+    "projection-level-3": {
+      "description": "strong enhancement",
+      "strength": 0.65
+    },
+    "curvature": {
+      "description": "curved shape",
+      "strength": 0.50
+    },
+    "hip-enhancement": {
+      "description": "hip enhancement",
+      "strength": 0.50
+    },
+    "firmness": {
+      "description": "firm contour",
+      "strength": 0.55
+    },
+    "lift": {
+      "description": "lifted contour",
+      "strength": 0.50
+    },
+    "symmetry": {
+      "description": "balanced shape",
+      "strength": 0.45
+    },
+    "cellulite": {
+      "description": "natural texture",
+      "strength": 0.50
+    },
+    "contour-smoothing": {
+      "description": "smooth contour",
+      "strength": 0.50
+    }
+  },
+  "views": {
+    "rear": "back",
+    "side": "side"
+  },
+  "default_strength": 0.50
+}
