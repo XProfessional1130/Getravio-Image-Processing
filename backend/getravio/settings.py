@@ -189,5 +189,7 @@ CHANNEL_LAYERS = {
     },
 }
 
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
 print(f"\n[OK] Django Channels (WebSocket) Enabled")
 print(f"  Redis Host: {os.getenv('REDIS_HOST', 'localhost')}:{os.getenv('REDIS_PORT', 6379)}")

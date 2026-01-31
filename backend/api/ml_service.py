@@ -1,6 +1,6 @@
 """
-Local ML service using Diffusers library for gluteal enhancement simulation
-Runs SDXL + ControlNet locally on GPU
+ML service using Diffusers library for gluteal enhancement simulation
+Runs SDXL + ControlNet on GPU (production)
 """
 import torch
 from diffusers import (
@@ -17,15 +17,15 @@ import os
 logger = logging.getLogger(__name__)
 
 
-class LocalImageGenerationService:
+class ImageGenerationService:
     """
-    Local image generation service using SDXL + ControlNet
-    Requires GPU with 12GB+ VRAM
+    Image generation service using SDXL + ControlNet
+    Requires GPU with 12GB+ VRAM for optimal performance
     """
 
     def __init__(self, device="cuda", model_cache_dir=None):
         """
-        Initialize the local ML pipeline
+        Initialize the ML pipeline
 
         Args:
             device: Device to run on ("cuda" or "cpu")
@@ -42,7 +42,7 @@ class LocalImageGenerationService:
         self.pipe = None
         self.pose_processor = None
 
-        logger.info(f"LocalImageGenerationService initialized (device={self.device})")
+        logger.info(f"ImageGenerationService initialized (device={self.device})")
 
     def _load_pipeline(self):
         """
@@ -246,7 +246,7 @@ class LocalImageGenerationService:
         guidance_scale: float = 7.5,
     ) -> Image.Image:
         """
-        Generate enhanced image using local SDXL pipeline
+        Generate enhanced image using SDXL pipeline
 
         Args:
             image: Input PIL Image
