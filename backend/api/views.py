@@ -228,6 +228,23 @@ class JobViewSet(viewsets.ModelViewSet):
 
         return job
 
+    def perform_destroy(self, instance):
+        """
+        Delete job and its associated images from storage
+        DELETE /api/jobs/:id
+        """
+        # Delete images from storage
+        if instance.original_image:
+            instance.original_image.delete(save=False)
+        if instance.simulation1_image:
+            instance.simulation1_image.delete(save=False)
+        if instance.simulation2_image:
+            instance.simulation2_image.delete(save=False)
+
+        # Delete the job record
+        instance.delete()
+        logger.info(f"Job {instance.id} deleted by user {instance.user.username}")
+
     @action(detail=True, methods=['post'])
     def select(self, request, pk=None):
         """

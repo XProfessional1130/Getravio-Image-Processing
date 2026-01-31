@@ -97,6 +97,8 @@ class JobSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.original_image.url)
+            # Return URL directly if no request context (e.g., from Celery task)
+            return obj.original_image.url
         return None
 
     def get_simulation1_url(self, obj):
@@ -104,7 +106,9 @@ class JobSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.simulation1_image.url)
-        # Phase 0: Return sample image if job is completed but no real simulation exists
+            # Return URL directly if no request context (e.g., from Celery task)
+            return obj.simulation1_image.url
+        # Return sample image if job is completed but no real simulation exists
         if obj.status == 'completed':
             sample_urls = get_sample_simulation_urls()
             return sample_urls['simulation1']
@@ -115,7 +119,9 @@ class JobSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.simulation2_image.url)
-        # Phase 0: Return sample image if job is completed but no real simulation exists
+            # Return URL directly if no request context (e.g., from Celery task)
+            return obj.simulation2_image.url
+        # Return sample image if job is completed but no real simulation exists
         if obj.status == 'completed':
             sample_urls = get_sample_simulation_urls()
             return sample_urls['simulation2']
