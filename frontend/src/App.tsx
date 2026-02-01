@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useAuth } from "./context/AuthContext";
 import { jobAPI, Job } from "./services/api";
-import { useJobWebSocket } from "./hooks/useJobWebSocket";
+import { useJobWebSocket, ProgressData } from "./hooks/useJobWebSocket";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import ImageComparison from "./components/ImageComparison";
@@ -19,6 +19,7 @@ function App() {
   const [currentJob, setCurrentJob] = useState<Job | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [progress, setProgress] = useState<ProgressData | null>(null);
 
   // WebSocket handler for real-time job updates
   const handleJobUpdate = useCallback((updatedJob: Job) => {
@@ -33,11 +34,27 @@ function App() {
     if (selectedJob?.id === updatedJob.id) {
       setSelectedJob(updatedJob);
     }
+
+    // Clear progress when job is completed
+    if (updatedJob.status === 'completed' || updatedJob.status === 'failed') {
+      setProgress(null);
+    }
+  }, [currentJob?.id, selectedJob?.id]);
+
+  // WebSocket handler for real-time progress updates
+  const handleProgressUpdate = useCallback((jobId: string, progressData: ProgressData) => {
+    console.log('[App] Received progress update:', jobId, progressData);
+
+    // Only update progress for the current job
+    if (currentJob?.id === jobId || selectedJob?.id === jobId) {
+      setProgress(progressData);
+    }
   }, [currentJob?.id, selectedJob?.id]);
 
   // Connect to WebSocket for real-time updates (only when authenticated)
   useJobWebSocket({
     onJobUpdate: handleJobUpdate,
+    onProgressUpdate: handleProgressUpdate,
     onConnect: () => console.log('[App] WebSocket connected'),
     onDisconnect: () => console.log('[App] WebSocket disconnected'),
     onError: (error) => console.error('[App] WebSocket error:', error)
@@ -151,6 +168,7 @@ function App() {
     setUploadedFile(null);
     setCurrentJob(null);
     setSelectedJob(null);
+    setProgress(null);
   };
 
   // Show loading spinner while checking authentication
@@ -304,6 +322,7 @@ function App() {
               )}
               <ImageComparison
                 job={currentJob}
+                progress={progress}
                 onHandleJobSubmit={handleJobSubmit}
                 onImageUpload={handleImageUpload}
               />

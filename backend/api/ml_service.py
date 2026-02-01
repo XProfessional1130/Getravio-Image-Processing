@@ -254,6 +254,7 @@ class ImageGenerationService:
         message: str = "",
         num_inference_steps: int = 30,
         guidance_scale: float = 7.5,
+        progress_callback=None,
     ) -> Image.Image:
         """Generate enhanced image using the configured pipeline"""
         self._load_pipeline()
@@ -276,6 +277,12 @@ class ImageGenerationService:
 
             logger.info(f"Running inference (steps={num_inference_steps})...")
 
+            # Create diffusers callback wrapper
+            def diffusers_callback(pipe, step, timestep, callback_kwargs):
+                if progress_callback:
+                    progress_callback(step + 1, num_inference_steps)
+                return callback_kwargs
+
             if self.model_type == 'sdxl':
                 # SDXL with ControlNet
                 pose_image = self.extract_pose(image)
@@ -289,9 +296,10 @@ class ImageGenerationService:
                     guidance_scale=guidance_scale,
                     strength=prompt_config["strength"],
                     controlnet_conditioning_scale=0.8,
+                    callback_on_step_end=diffusers_callback,
                 )
             else:
-                # SD 2.1 (simpler img2img)
+                # SD 1.5 (simpler img2img)
                 output = self.pipe(
                     prompt=prompt_config["prompt"],
                     negative_prompt=prompt_config["negative_prompt"],
@@ -299,6 +307,7 @@ class ImageGenerationService:
                     num_inference_steps=num_inference_steps,
                     guidance_scale=guidance_scale,
                     strength=prompt_config["strength"],
+                    callback_on_step_end=diffusers_callback,
                 )
 
             result_image = output.images[0]

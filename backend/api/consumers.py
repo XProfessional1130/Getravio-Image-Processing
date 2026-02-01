@@ -66,3 +66,15 @@ class JobStatusConsumer(AsyncWebsocketConsumer):
             'type': 'job_update',
             'job': event['job']
         }))
+
+    async def job_progress_update(self, event):
+        """
+        Handle real-time progress update events from channel layer.
+        This is called during image generation to show progress.
+        """
+        # Send progress update to WebSocket
+        await self.send(text_data=json.dumps({
+            'type': 'progress_update',
+            'job_id': event['job_id'],
+            'progress': event['progress']
+        }))

@@ -1,14 +1,16 @@
 import { useState, ChangeEvent } from 'react';
 import Upload from './Upload';
 import { Job } from '../services/api';
+import { ProgressData } from '../hooks/useJobWebSocket';
 
 interface ImageComparisonProps {
   job: Job | null;
+  progress: ProgressData | null;
   onHandleJobSubmit: (jobData: { region: string; scenario: string, message: string }) => void;
   onImageUpload: (file: File) => void;
 }
 
-function ImageComparison({ job, onHandleJobSubmit, onImageUpload }: ImageComparisonProps) {
+function ImageComparison({ job, progress, onHandleJobSubmit, onImageUpload }: ImageComparisonProps) {
   const [showLabels] = useState<boolean>(true);
 
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
@@ -104,19 +106,53 @@ function ImageComparison({ job, onHandleJobSubmit, onImageUpload }: ImageCompari
               {job && job.simulation1_url ? (
                 <img src={job.simulation1_url} alt="Simulation 1" className="w-full h-full object-cover animate-fadeIn hover:scale-105 transition-transform duration-500" />
               ) : job && (job.status === 'queued' || job.status === 'processing') ? (
-                <div className="flex flex-col items-center gap-2 sm:gap-3 animate-pulse">
-                  <div className="relative">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin" />
-                    <div className="absolute inset-0 w-12 h-12 sm:w-16 sm:h-16 rounded-full border-4 border-transparent border-b-blue-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1s' }} />
-                  </div>
-                  <div className="text-center space-y-1">
-                    <span className="text-blue-600 text-xs sm:text-sm font-bold block animate-pulse">Generating...</span>
-                    <div className="flex gap-1 justify-center">
-                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </div>
-                  </div>
+                <div className="flex flex-col items-center gap-3 sm:gap-4 px-4">
+                  {progress && progress.view === 'rear' ? (
+                    <>
+                      {/* Progress Circle */}
+                      <div className="relative w-20 h-20 sm:w-24 sm:h-24">
+                        <svg className="w-full h-full transform -rotate-90">
+                          <circle
+                            cx="50%"
+                            cy="50%"
+                            r="45%"
+                            stroke="currentColor"
+                            strokeWidth="8"
+                            fill="transparent"
+                            className="text-blue-200"
+                          />
+                          <circle
+                            cx="50%"
+                            cy="50%"
+                            r="45%"
+                            stroke="currentColor"
+                            strokeWidth="8"
+                            fill="transparent"
+                            strokeDasharray={`${2 * Math.PI * 45} ${2 * Math.PI * 45}`}
+                            strokeDashoffset={`${2 * Math.PI * 45 * (1 - progress.percentage / 100)}`}
+                            className="text-blue-600 transition-all duration-300"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-xl sm:text-2xl font-bold text-blue-600">{progress.percentage}%</span>
+                        </div>
+                      </div>
+                      <div className="text-center space-y-1">
+                        <span className="text-blue-600 text-sm sm:text-base font-bold block">Generating REAR</span>
+                        <span className="text-blue-500 text-xs block">Step {progress.step}/{progress.total_steps}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="relative">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin" />
+                      </div>
+                      <div className="text-center space-y-1">
+                        <span className="text-blue-600 text-xs sm:text-sm font-bold block animate-pulse">Waiting...</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2 px-4 group-hover:scale-110 transition-transform duration-300">
@@ -135,19 +171,58 @@ function ImageComparison({ job, onHandleJobSubmit, onImageUpload }: ImageCompari
               {job && job.simulation2_url ? (
                 <img src={job.simulation2_url} alt="Simulation 2" className="w-full h-full object-cover animate-fadeIn hover:scale-105 transition-transform duration-500" />
               ) : job && (job.status === 'queued' || job.status === 'processing') ? (
-                <div className="flex flex-col items-center gap-2 sm:gap-3 animate-pulse">
-                  <div className="relative">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-4 border-purple-200 border-t-purple-600 animate-spin" />
-                    <div className="absolute inset-0 w-12 h-12 sm:w-16 sm:h-16 rounded-full border-4 border-transparent border-b-purple-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1s' }} />
-                  </div>
-                  <div className="text-center space-y-1">
-                    <span className="text-purple-600 text-xs sm:text-sm font-bold block animate-pulse">Generating...</span>
-                    <div className="flex gap-1 justify-center">
-                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </div>
-                  </div>
+                <div className="flex flex-col items-center gap-3 sm:gap-4 px-4">
+                  {progress && progress.view === 'side' ? (
+                    <>
+                      {/* Progress Circle */}
+                      <div className="relative w-20 h-20 sm:w-24 sm:h-24">
+                        <svg className="w-full h-full transform -rotate-90">
+                          <circle
+                            cx="50%"
+                            cy="50%"
+                            r="45%"
+                            stroke="currentColor"
+                            strokeWidth="8"
+                            fill="transparent"
+                            className="text-purple-200"
+                          />
+                          <circle
+                            cx="50%"
+                            cy="50%"
+                            r="45%"
+                            stroke="currentColor"
+                            strokeWidth="8"
+                            fill="transparent"
+                            strokeDasharray={`${2 * Math.PI * 45} ${2 * Math.PI * 45}`}
+                            strokeDashoffset={`${2 * Math.PI * 45 * (1 - progress.percentage / 100)}`}
+                            className="text-purple-600 transition-all duration-300"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-xl sm:text-2xl font-bold text-purple-600">{progress.percentage}%</span>
+                        </div>
+                      </div>
+                      <div className="text-center space-y-1">
+                        <span className="text-purple-600 text-sm sm:text-base font-bold block">Generating SIDE</span>
+                        <span className="text-purple-500 text-xs block">Step {progress.step}/{progress.total_steps}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Awaiting state - show when rear is being generated */}
+                      <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center">
+                        <div className="absolute inset-0 rounded-full border-4 border-dashed border-purple-300 animate-spin" style={{ animationDuration: '8s' }} />
+                        <svg className="w-8 h-8 sm:w-10 sm:h-10 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div className="text-center space-y-1">
+                        <span className="text-purple-500 text-sm sm:text-base font-semibold block">Awaiting</span>
+                        <span className="text-purple-400 text-xs block">REAR view first...</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2 px-4 group-hover:scale-110 transition-transform duration-300">
@@ -167,7 +242,7 @@ function ImageComparison({ job, onHandleJobSubmit, onImageUpload }: ImageCompari
 
           {/* Processing Status */}
           {job && isProcessing && (
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 animate-fadeIn animate-glow">
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 animate-fadeIn">
               <div className="flex items-start gap-3">
                 <div className="relative">
                   <svg className="w-6 h-6 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -176,14 +251,27 @@ function ImageComparison({ job, onHandleJobSubmit, onImageUpload }: ImageCompari
                   </svg>
                 </div>
                 <div className="flex-1">
-                  <h4 className="text-sm font-bold text-blue-900 mb-1">Processing</h4>
+                  <h4 className="text-sm font-bold text-blue-900 mb-1">
+                    {progress ? `Generating ${progress.view.toUpperCase()} View` : 'Processing'}
+                  </h4>
                   <p className="text-xs text-blue-700 leading-relaxed">
-                    AI is generating your simulation images. This may take 30-60 seconds...
+                    {progress
+                      ? `Step ${progress.step} of ${progress.total_steps} (${progress.percentage}%)`
+                      : 'AI is generating your simulation images...'}
                   </p>
-                  <div className="mt-3 flex gap-1">
-                    <div className="h-1 flex-1 bg-blue-200 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-600 rounded-full animate-pulse" style={{ width: '70%' }}></div>
+                  <div className="mt-3">
+                    <div className="h-2 bg-blue-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-600 rounded-full transition-all duration-300"
+                        style={{ width: progress ? `${progress.percentage}%` : '5%' }}
+                      />
                     </div>
+                    {progress && (
+                      <div className="flex justify-between mt-1">
+                        <span className="text-xs text-blue-500">{progress.view === 'rear' ? 'REAR' : 'SIDE'}</span>
+                        <span className="text-xs text-blue-500 font-medium">{progress.percentage}%</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

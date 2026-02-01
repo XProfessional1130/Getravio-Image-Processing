@@ -92,22 +92,29 @@ class JobSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'user', 'status', 'created_at', 'updated_at']
 
-    def get_original_image_url(self, obj):
-        if obj.original_image:
+    def _get_s3_url(self, image_field):
+        """Generate URL for image - uses presigned URL for S3, regular URL otherwise"""
+        if not image_field:
+            return None
+
+        # Check if using S3 storage
+        if hasattr(image_field.storage, 's3_client'):
+            # Generate presigned URL valid for 7 days
+            return image_field.storage.url(image_field.name, expire=604800)
+        else:
+            # Local storage - use regular URL
             request = self.context.get('request')
             if request:
-                return request.build_absolute_uri(obj.original_image.url)
-            # Return URL directly if no request context (e.g., from Celery task)
-            return obj.original_image.url
-        return None
+                return request.build_absolute_uri(image_field.url)
+            return image_field.url
+
+    def get_original_image_url(self, obj):
+        return self._get_s3_url(obj.original_image)
 
     def get_simulation1_url(self, obj):
-        if obj.simulation1_image:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.simulation1_image.url)
-            # Return URL directly if no request context (e.g., from Celery task)
-            return obj.simulation1_image.url
+        url = self._get_s3_url(obj.simulation1_image)
+        if url:
+            return url
         # Return sample image if job is completed but no real simulation exists
         if obj.status == 'completed':
             sample_urls = get_sample_simulation_urls()
@@ -115,12 +122,9 @@ class JobSerializer(serializers.ModelSerializer):
         return None
 
     def get_simulation2_url(self, obj):
-        if obj.simulation2_image:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.simulation2_image.url)
-            # Return URL directly if no request context (e.g., from Celery task)
-            return obj.simulation2_image.url
+        url = self._get_s3_url(obj.simulation2_image)
+        if url:
+            return url
         # Return sample image if job is completed but no real simulation exists
         if obj.status == 'completed':
             sample_urls = get_sample_simulation_urls()

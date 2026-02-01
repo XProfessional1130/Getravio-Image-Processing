@@ -17,7 +17,6 @@ def send_job_update_via_websocket(user_id, job_data):
         channel_layer = get_channel_layer()
         user_channel_name = f'job_updates_{user_id}'
 
-        # Send update to user's WebSocket channel
         async_to_sync(channel_layer.group_send)(
             user_channel_name,
             {
@@ -30,42 +29,57 @@ def send_job_update_via_websocket(user_id, job_data):
         logger.error(f"[WebSocket] Failed to send update to user {user_id}: {str(e)}")
 
 
+def send_progress_update(user_id, job_id, progress_data):
+    """
+    Send real-time progress update via WebSocket.
+    """
+    try:
+        channel_layer = get_channel_layer()
+        user_channel_name = f'job_updates_{user_id}'
+
+        async_to_sync(channel_layer.group_send)(
+            user_channel_name,
+            {
+                'type': 'job_progress_update',
+                'job_id': str(job_id),
+                'progress': progress_data
+            }
+        )
+        logger.info(f"[WebSocket] Progress update for job {job_id}: {progress_data.get('step')}/{progress_data.get('total_steps')}")
+    except Exception as e:
+        logger.error(f"[WebSocket] Failed to send progress: {str(e)}")
+
+
 @shared_task(bind=True, max_retries=3)
 def process_image_generation(self, job_id):
     """
-    Process image generation using on-server GPU with SDXL + ControlNet.
-    Sends WebSocket notifications at each status change for real-time updates.
-
-    Args:
-        job_id: The ID of the job to process
+    Process image generation with real-time progress updates.
+    Sends WebSocket notifications for progress and immediate image display.
     """
     from .models import Job
-    from .ml_service import ImageGenerationService
+    from .ml_service import ImageGenerationService, PROMPTS
     from .serializers import JobSerializer
     from django.core.files.base import ContentFile
     from PIL import Image
     import io
+    import os
 
     try:
         # Fetch job
         job = Job.objects.get(id=job_id)
         user_id = job.user.id
 
-        # Update status to processing and notify via WebSocket
+        # Update status to processing
         job.status = 'processing'
         job.save()
 
-        # Serialize and send WebSocket update
         job_data = JobSerializer(job).data
         send_job_update_via_websocket(user_id, job_data)
 
-        logger.info(f"[Job {job_id}] Starting GPU image generation for user {user_id}")
+        logger.info(f"[Job {job_id}] Starting image generation for user {user_id}")
 
         # Load original image
-        logger.info(f"[Job {job_id}] Loading original image...")
         original_image = Image.open(job.original_image)
-
-        # Ensure RGB mode
         if original_image.mode != 'RGB':
             original_image = original_image.convert('RGB')
 
@@ -74,47 +88,86 @@ def process_image_generation(self, job_id):
         # Initialize ML service
         ml_service = ImageGenerationService(device="cuda")
 
-        # Generate both simulation views
-        # Load inference steps from prompts.json
-        from .ml_service import PROMPTS
-        import os
+        # Get inference steps from config
         mode = "dev" if os.getenv('ML_MODEL', 'sdxl') == 'sd21' else "prod"
         num_steps = PROMPTS.get(mode, {}).get("inference_steps", 20)
 
-        logger.info(f"[Job {job_id}] Generating rear and side views (steps={num_steps})...")
-        results = ml_service.generate_both_views(
+        # Create progress callback
+        def progress_callback(step, total_steps, view_name):
+            send_progress_update(user_id, job_id, {
+                'view': view_name,
+                'step': step,
+                'total_steps': total_steps,
+                'percentage': int((step / total_steps) * 100)
+            })
+
+        # ========== Generate REAR view ==========
+        logger.info(f"[Job {job_id}] Generating rear view...")
+        send_progress_update(user_id, job_id, {
+            'view': 'rear',
+            'step': 0,
+            'total_steps': num_steps,
+            'percentage': 0,
+            'message': 'Starting rear view generation...'
+        })
+
+        rear_image = ml_service.generate_image(
             image=original_image,
             region=job.region,
             scenario=job.scenario,
+            view="rear",
             message=job.message or '',
             num_inference_steps=num_steps,
             guidance_scale=7.5,
+            progress_callback=lambda step, total: progress_callback(step, total, 'rear')
         )
 
-        # Save generated images
-        logger.info(f"[Job {job_id}] Saving generated images...")
-
-        # Save rear view (simulation1_image)
+        # Save rear view immediately
         rear_buffer = io.BytesIO()
-        results['rear'].save(rear_buffer, format='JPEG', quality=95)
+        rear_image.save(rear_buffer, format='JPEG', quality=95)
         rear_buffer.seek(0)
-        rear_content = ContentFile(rear_buffer.read())
         job.simulation1_image.save(
             f'simulations/{job_id}_rear.jpg',
-            rear_content,
-            save=False
+            ContentFile(rear_buffer.read()),
+            save=True  # Save to DB immediately
         )
         logger.info(f"[Job {job_id}] ✓ Rear view saved")
 
-        # Save side view (simulation2_image)
+        # Send update with rear image available
+        job.refresh_from_db()
+        job_data = JobSerializer(job).data
+        job_data['rear_complete'] = True
+        send_job_update_via_websocket(user_id, job_data)
+
+        # ========== Generate SIDE view ==========
+        logger.info(f"[Job {job_id}] Generating side view...")
+        send_progress_update(user_id, job_id, {
+            'view': 'side',
+            'step': 0,
+            'total_steps': num_steps,
+            'percentage': 0,
+            'message': 'Starting side view generation...'
+        })
+
+        side_image = ml_service.generate_image(
+            image=original_image,
+            region=job.region,
+            scenario=job.scenario,
+            view="side",
+            message=job.message or '',
+            num_inference_steps=num_steps,
+            guidance_scale=7.5,
+            progress_callback=lambda step, total: progress_callback(step, total, 'side')
+        )
+
+        # Save side view
         side_buffer = io.BytesIO()
-        results['side'].save(side_buffer, format='JPEG', quality=95)
+        side_image.save(side_buffer, format='JPEG', quality=95)
         side_buffer.seek(0)
-        side_content = ContentFile(side_buffer.read())
         job.simulation2_image.save(
             f'simulations/{job_id}_side.jpg',
-            side_content,
-            save=False
+            ContentFile(side_buffer.read()),
+            save=True
         )
         logger.info(f"[Job {job_id}] ✓ Side view saved")
 
@@ -122,19 +175,17 @@ def process_image_generation(self, job_id):
         job.status = 'completed'
         job.save()
 
-        # Send final WebSocket update
+        # Send final update
+        job.refresh_from_db()
         job_data = JobSerializer(job).data
+        job_data['side_complete'] = True
         send_job_update_via_websocket(user_id, job_data)
 
-        logger.info(f"[Job {job_id}] ✓ Successfully completed for user {user_id}")
-        logger.info(f"[Job {job_id}] Rear view URL: {job.simulation1_image.url}")
-        logger.info(f"[Job {job_id}] Side view URL: {job.simulation2_image.url}")
+        logger.info(f"[Job {job_id}] ✓ Successfully completed")
 
         return {
             'success': True,
             'job_id': str(job_id),
-            'rear_url': job.simulation1_image.url if job.simulation1_image else None,
-            'side_url': job.simulation2_image.url if job.simulation2_image else None,
         }
 
     except Job.DoesNotExist:
@@ -144,22 +195,19 @@ def process_image_generation(self, job_id):
     except Exception as e:
         logger.error(f"[Job {job_id}] Error: {str(e)}")
 
-        # Update job status to failed and notify via WebSocket
         try:
             job = Job.objects.get(id=job_id)
             job.status = 'failed'
             job.save()
 
-            # Send error WebSocket update
             job_data = JobSerializer(job).data
             send_job_update_via_websocket(job.user.id, job_data)
 
         except Exception as inner_e:
             logger.error(f"[Job {job_id}] Failed to update error status: {str(inner_e)}")
 
-        # Retry the task if max retries not reached
         if self.request.retries < self.max_retries:
             logger.info(f"[Job {job_id}] Retrying... (attempt {self.request.retries + 1}/{self.max_retries})")
-            raise self.retry(exc=e, countdown=60)  # Retry after 60 seconds
+            raise self.retry(exc=e, countdown=60)
 
         return {'success': False, 'error': str(e)}

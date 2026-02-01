@@ -1,14 +1,25 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { Job } from '../services/api';
 
+export interface ProgressData {
+  view: 'rear' | 'side';
+  step: number;
+  total_steps: number;
+  percentage: number;
+  message?: string;
+}
+
 interface WebSocketMessage {
   type: string;
   job?: Job;
+  job_id?: string;
+  progress?: ProgressData;
   message?: string;
 }
 
 interface UseJobWebSocketOptions {
   onJobUpdate: (job: Job) => void;
+  onProgressUpdate?: (jobId: string, progress: ProgressData) => void;
   onError?: (error: Event) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
@@ -18,7 +29,7 @@ interface UseJobWebSocketOptions {
  * Custom hook for WebSocket connection to receive real-time job updates.
  * Automatically handles connection, reconnection, and message parsing.
  */
-export function useJobWebSocket({ onJobUpdate, onError, onConnect, onDisconnect }: UseJobWebSocketOptions) {
+export function useJobWebSocket({ onJobUpdate, onProgressUpdate, onError, onConnect, onDisconnect }: UseJobWebSocketOptions) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
@@ -57,6 +68,8 @@ export function useJobWebSocket({ onJobUpdate, onError, onConnect, onDisconnect 
 
           if (data.type === 'job_update' && data.job) {
             onJobUpdate(data.job);
+          } else if (data.type === 'progress_update' && data.job_id && data.progress) {
+            onProgressUpdate?.(data.job_id, data.progress);
           } else if (data.type === 'connection_established') {
             console.log('[WebSocket] Connection established:', data.message);
           }
@@ -90,7 +103,7 @@ export function useJobWebSocket({ onJobUpdate, onError, onConnect, onDisconnect 
     } catch (error) {
       console.error('[WebSocket] Connection error:', error);
     }
-  }, [onJobUpdate, onError, onConnect, onDisconnect]);
+  }, [onJobUpdate, onProgressUpdate, onError, onConnect, onDisconnect]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
