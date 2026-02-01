@@ -196,11 +196,17 @@ class ImageGenerationService:
             self.pose_processor = False
 
     def build_prompt(self, region: str, scenario: str, view: str, message: str = "") -> dict:
-        """Build prompt configuration from prompts.json"""
-        # Get scenario config
-        scenario_config = PROMPTS.get("scenarios", {}).get(scenario, {})
-        strength = scenario_config.get("strength", PROMPTS.get("default_strength", 0.50))
-        scenario_desc = scenario_config.get("description", "enhancement")
+        """Build prompt configuration from prompts.json
+
+        Prompt structure: [view] + [level] + [user message]
+        - View: rear, side profile
+        - Level: subtle/moderate/significant enhancement
+        - User message: custom details from user
+        """
+        # Get level config (renamed from scenarios for clarity)
+        level_config = PROMPTS.get("levels", {}).get(scenario, {})
+        strength = level_config.get("strength", PROMPTS.get("default_strength", 0.45))
+        level_desc = level_config.get("description", "enhancement")
 
         # Get view description
         view_desc = PROMPTS.get("views", {}).get(view, view)
@@ -209,15 +215,23 @@ class ImageGenerationService:
         mode = "dev" if self.model_type == 'sd21' else "prod"
         mode_config = PROMPTS.get(mode, {})
 
+        # Format user prompt (add comma prefix if user provided message)
+        user_prompt = ""
+        if message and message.strip():
+            user_prompt = f", {message.strip()}"
+
         # Build prompt from template
         prompt_template = mode_config.get("prompt_template", "photo, realistic")
         prompt = prompt_template.format(
             view=view_desc,
-            scenario_desc=scenario_desc,
-            region=region
+            level_desc=level_desc,
+            user_prompt=user_prompt
         )
 
         negative_prompt = mode_config.get("negative_prompt", "bad quality")
+
+        logger.info(f"Built prompt: {prompt[:100]}...")
+        logger.info(f"Strength: {strength}")
 
         return {
             "prompt": " ".join(prompt.split()),

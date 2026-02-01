@@ -1,59 +1,31 @@
 {
   "dev": {
-    "prompt_template": "photo of person, {view} view, realistic, high quality",
-    "negative_prompt": "deformed, blurry, bad anatomy",
+    "prompt_template": "{view} view, {level_desc}, high quality photo{user_prompt}",
+    "negative_prompt": "deformed, blurry, bad anatomy, distorted",
     "inference_steps": 15
   },
   "prod": {
-    "prompt_template": "medical photography, realistic body, {scenario_desc}, {view} view, photorealistic",
-    "negative_prompt": "deformed, cartoon, low quality, blurry, bad anatomy, watermark",
+    "prompt_template": "{view} view photograph, {level_desc}, professional quality, realistic, detailed{user_prompt}",
+    "negative_prompt": "deformed, cartoon, illustration, painting, drawing, low quality, blurry, bad anatomy, distorted, watermark, text, logo",
     "inference_steps": 30
   },
-  "scenarios": {
+  "levels": {
     "projection-level-1": {
-      "description": "subtle enhancement",
-      "strength": 0.35
+      "description": "subtle natural enhancement",
+      "strength": 0.30
     },
     "projection-level-2": {
       "description": "moderate enhancement",
-      "strength": 0.50
-    },
-    "projection-level-3": {
-      "description": "strong enhancement",
-      "strength": 0.65
-    },
-    "curvature": {
-      "description": "curved shape",
-      "strength": 0.50
-    },
-    "hip-enhancement": {
-      "description": "hip enhancement",
-      "strength": 0.50
-    },
-    "firmness": {
-      "description": "firm contour",
-      "strength": 0.55
-    },
-    "lift": {
-      "description": "lifted contour",
-      "strength": 0.50
-    },
-    "symmetry": {
-      "description": "balanced shape",
       "strength": 0.45
     },
-    "cellulite": {
-      "description": "natural texture",
-      "strength": 0.50
-    },
-    "contour-smoothing": {
-      "description": "smooth contour",
-      "strength": 0.50
+    "projection-level-3": {
+      "description": "significant enhancement",
+      "strength": 0.60
     }
   },
   "views": {
-    "rear": "back",
-    "side": "side"
+    "rear": "rear",
+    "side": "side profile"
   },
-  "default_strength": 0.50
+  "default_strength": 0.45
 }
