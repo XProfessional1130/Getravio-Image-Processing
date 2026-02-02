@@ -91,6 +91,7 @@ function App() {
       id: `preview-${Date.now()}`,
       region: 'gluteal',
       scenario: 'projection-level-1',
+      view_type: 'rear',
       status: 'draft',
       message: '',
       original_image_url: imageUrl,
@@ -101,7 +102,7 @@ function App() {
     setCurrentJob(previewJob);
   };
 
-  const handleJobSubmit = async (jobData: { region: string; scenario: string, message: string }) => {
+  const handleJobSubmit = async (jobData: { region: string; scenario: string; view_type: string; message: string }) => {
     if (!uploadedFile) {
       alert("Please upload an image first");
       return;
@@ -114,6 +115,7 @@ function App() {
         status: 'queued',
         region: jobData.region,
         scenario: jobData.scenario,
+        view_type: jobData.view_type as 'rear' | 'side',
         message: jobData.message
       });
     }
@@ -124,6 +126,7 @@ function App() {
       formData.append('original_image', uploadedFile);
       formData.append('region', jobData.region);
       formData.append('scenario', jobData.scenario);
+      formData.append('view_type', jobData.view_type);
       if (jobData.message) {
         formData.append('message', jobData.message);
       }

@@ -67,8 +67,7 @@ class JobSerializer(serializers.ModelSerializer):
 
     user = UserSerializer(read_only=True)
     original_image_url = serializers.SerializerMethodField()
-    simulation1_url = serializers.SerializerMethodField()
-    simulation2_url = serializers.SerializerMethodField()
+    simulation_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Job
@@ -77,15 +76,13 @@ class JobSerializer(serializers.ModelSerializer):
             'user',
             'region',
             'scenario',
+            'view_type',
             'status',
             'message',
             'original_image',
             'original_image_url',
-            'simulation1_image',
-            'simulation1_url',
-            'simulation2_image',
-            'simulation2_url',
-            'selected_simulation',
+            'simulation_image',
+            'simulation_url',
             'is_favorite',
             'created_at',
             'updated_at',
@@ -111,24 +108,14 @@ class JobSerializer(serializers.ModelSerializer):
     def get_original_image_url(self, obj):
         return self._get_s3_url(obj.original_image)
 
-    def get_simulation1_url(self, obj):
-        url = self._get_s3_url(obj.simulation1_image)
+    def get_simulation_url(self, obj):
+        url = self._get_s3_url(obj.simulation_image)
         if url:
             return url
         # Return sample image if job is completed but no real simulation exists
         if obj.status == 'completed':
             sample_urls = get_sample_simulation_urls()
-            return sample_urls['simulation1']
-        return None
-
-    def get_simulation2_url(self, obj):
-        url = self._get_s3_url(obj.simulation2_image)
-        if url:
-            return url
-        # Return sample image if job is completed but no real simulation exists
-        if obj.status == 'completed':
-            sample_urls = get_sample_simulation_urls()
-            return sample_urls['simulation2']
+            return sample_urls.get('simulation1')
         return None
 
 

@@ -6,7 +6,7 @@ import { ProgressData } from '../hooks/useJobWebSocket';
 interface ImageComparisonProps {
   job: Job | null;
   progress: ProgressData | null;
-  onHandleJobSubmit: (jobData: { region: string; scenario: string, message: string }) => void;
+  onHandleJobSubmit: (jobData: { region: string; scenario: string; view_type: string; message: string }) => void;
   onImageUpload: (file: File) => void;
 }
 
@@ -51,12 +51,12 @@ function ImageComparison({ job, progress, onHandleJobSubmit, onImageUpload }: Im
         </div>
       )}
 
-      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 p-4 sm:p-6 lg:p-8">
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 p-4 sm:p-6 lg:p-8">
         {/* Images Grid */}
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           <div className="space-y-2 sm:space-y-3 animate-fadeIn">
             {showLabels && <h3 className="text-xs sm:text-sm font-bold text-blue-900/80 tracking-wide">ORIGINAL</h3>}
-            <div className="w-full aspect-[3/4] bg-gradient-to-br from-slate-50 to-blue-50/40 rounded-xl sm:rounded-2xl border-2 border-dashed border-blue-200/60 flex items-center justify-center overflow-hidden relative transition-all duration-500 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-500/10 hover:scale-[1.02] group">
+            <div className="w-full aspect-square lg:aspect-[3/4] max-h-[50vh] lg:max-h-[60vh] bg-gradient-to-br from-slate-50 to-blue-50/40 rounded-xl sm:rounded-2xl border-2 border-dashed border-blue-200/60 flex items-center justify-center overflow-hidden relative transition-all duration-500 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-500/10 hover:scale-[1.02] group">
               {job?.original_image_url ? (
                 <div className="w-full h-full relative">
                   <img src={job.original_image_url} alt="Original" className="w-full h-full object-cover rounded-lg sm:rounded-xl animate-fadeIn" />
@@ -101,13 +101,13 @@ function ImageComparison({ job, progress, onHandleJobSubmit, onImageUpload }: Im
           </div>
 
           <div className="space-y-2 sm:space-y-3 animate-fadeIn" style={{ animationDelay: '0.1s' }}>
-            {showLabels && <h3 className="text-xs sm:text-sm font-bold text-blue-900/80 tracking-wide">REAR</h3>}
-            <div className="w-full aspect-[3/4] bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-xl sm:rounded-2xl border border-blue-100/50 flex items-center justify-center overflow-hidden shadow-md shadow-blue-900/5 transition-all duration-500 hover:shadow-xl hover:shadow-blue-500/20 hover:scale-[1.02] group">
-              {job && job.simulation1_url ? (
-                <img src={job.simulation1_url} alt="Simulation 1" className="w-full h-full object-cover animate-fadeIn hover:scale-105 transition-transform duration-500" />
+            {showLabels && <h3 className="text-xs sm:text-sm font-bold text-blue-900/80 tracking-wide">SIMULATION {job?.view_type ? `(${job.view_type.toUpperCase()})` : ''}</h3>}
+            <div className="w-full aspect-square lg:aspect-[3/4] max-h-[50vh] lg:max-h-[60vh] bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-xl sm:rounded-2xl border border-blue-100/50 flex items-center justify-center overflow-hidden shadow-md shadow-blue-900/5 transition-all duration-500 hover:shadow-xl hover:shadow-blue-500/20 hover:scale-[1.02] group">
+              {job && job.simulation_url ? (
+                <img src={job.simulation_url} alt="Simulation" className="w-full h-full object-cover animate-fadeIn hover:scale-105 transition-transform duration-500" />
               ) : job && (job.status === 'queued' || job.status === 'processing') ? (
                 <div className="flex flex-col items-center gap-3 sm:gap-4 px-4">
-                  {progress && progress.view === 'rear' ? (
+                  {progress ? (
                     <>
                       {/* Progress Circle */}
                       <div className="relative w-20 h-20 sm:w-24 sm:h-24">
@@ -139,7 +139,7 @@ function ImageComparison({ job, progress, onHandleJobSubmit, onImageUpload }: Im
                         </div>
                       </div>
                       <div className="text-center space-y-1">
-                        <span className="text-blue-600 text-sm sm:text-base font-bold block">Generating REAR</span>
+                        <span className="text-blue-600 text-sm sm:text-base font-bold block">Generating {progress.view?.toUpperCase()}</span>
                         <span className="text-blue-500 text-xs block">Step {progress.step}/{progress.total_steps}</span>
                       </div>
                     </>
@@ -164,80 +164,10 @@ function ImageComparison({ job, progress, onHandleJobSubmit, onImageUpload }: Im
               )}
             </div>
           </div>
-
-          <div className="space-y-2 sm:space-y-3 animate-fadeIn" style={{ animationDelay: '0.2s' }}>
-            {showLabels && <h3 className="text-xs sm:text-sm font-bold text-blue-900/80 tracking-wide">SIDE</h3>}
-            <div className="w-full aspect-[3/4] bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-xl sm:rounded-2xl border border-blue-100/50 flex items-center justify-center overflow-hidden shadow-md shadow-blue-900/5 transition-all duration-500 hover:shadow-xl hover:shadow-purple-500/20 hover:scale-[1.02] group">
-              {job && job.simulation2_url ? (
-                <img src={job.simulation2_url} alt="Simulation 2" className="w-full h-full object-cover animate-fadeIn hover:scale-105 transition-transform duration-500" />
-              ) : job && (job.status === 'queued' || job.status === 'processing') ? (
-                <div className="flex flex-col items-center gap-3 sm:gap-4 px-4">
-                  {progress && progress.view === 'side' ? (
-                    <>
-                      {/* Progress Circle */}
-                      <div className="relative w-20 h-20 sm:w-24 sm:h-24">
-                        <svg className="w-full h-full transform -rotate-90">
-                          <circle
-                            cx="50%"
-                            cy="50%"
-                            r="45%"
-                            stroke="currentColor"
-                            strokeWidth="8"
-                            fill="transparent"
-                            className="text-purple-200"
-                          />
-                          <circle
-                            cx="50%"
-                            cy="50%"
-                            r="45%"
-                            stroke="currentColor"
-                            strokeWidth="8"
-                            fill="transparent"
-                            strokeDasharray={`${2 * Math.PI * 45} ${2 * Math.PI * 45}`}
-                            strokeDashoffset={`${2 * Math.PI * 45 * (1 - progress.percentage / 100)}`}
-                            className="text-purple-600 transition-all duration-300"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-xl sm:text-2xl font-bold text-purple-600">{progress.percentage}%</span>
-                        </div>
-                      </div>
-                      <div className="text-center space-y-1">
-                        <span className="text-purple-600 text-sm sm:text-base font-bold block">Generating SIDE</span>
-                        <span className="text-purple-500 text-xs block">Step {progress.step}/{progress.total_steps}</span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {/* Awaiting state - show when rear is being generated */}
-                      <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center">
-                        <div className="absolute inset-0 rounded-full border-4 border-dashed border-purple-300 animate-spin" style={{ animationDuration: '8s' }} />
-                        <svg className="w-8 h-8 sm:w-10 sm:h-10 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <div className="text-center space-y-1">
-                        <span className="text-purple-500 text-sm sm:text-base font-semibold block">Awaiting</span>
-                        <span className="text-purple-400 text-xs block">REAR view first...</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-2 px-4 group-hover:scale-110 transition-transform duration-300">
-                  <svg className="w-12 h-12 sm:w-16 sm:h-16 text-slate-300 group-hover:text-slate-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <span className="text-slate-400 text-xs sm:text-sm font-medium text-center">No simulation yet</span>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Control Panel - Right Side */}
-        <div className="w-full lg:w-72 flex flex-col gap-4">
+        <div className="w-full lg:w-72 lg:max-h-[calc(100vh-200px)] lg:overflow-y-auto flex flex-col gap-3">
           <Upload onSubmit={onHandleJobSubmit} isProcessing={isProcessing} />
 
           {/* Processing Status */}
@@ -302,7 +232,7 @@ function ImageComparison({ job, progress, onHandleJobSubmit, onImageUpload }: Im
           )}
 
           {/* Success Message */}
-          {job && job.status === 'completed' && (job.simulation1_url || job.simulation2_url) && (
+          {job && job.status === 'completed' && job.simulation_url && (
             <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl p-4 animate-bounceIn">
               <div className="flex items-start gap-3">
                 <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

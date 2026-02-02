@@ -37,9 +37,14 @@
 }
 
 .result-region,
-.result-scenario {
+.result-scenario,
+.result-view-type {
   font-weight: 600;
   text-transform: capitalize;
+}
+
+.result-view-type {
+  color: #3b82f6;
 }
 
 .result-separator {
@@ -133,11 +138,17 @@
   color: #0284c7;
 }
 
-/* 3-Column Comparison Row */
+/* Comparison Row */
 .images-comparison-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 24px;
+}
+
+.images-comparison-row.two-columns {
+  grid-template-columns: repeat(2, 1fr);
+  max-width: 1000px;
+  margin: 0 auto;
 }
 
 .image-column {

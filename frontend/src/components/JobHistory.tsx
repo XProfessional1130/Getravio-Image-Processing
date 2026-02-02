@@ -182,11 +182,9 @@ const JobHistory: React.FC<JobHistoryProps> = ({ onViewJob }) => {
                 <div className="job-details">
                   <p className="job-date">{new Date(job.created_at).toLocaleDateString()}</p>
                   <p className="job-scenario">{job.scenario.replace(/-/g, ' ')}</p>
-                  {job.selected_simulation && (
-                    <p className="job-selection">
-                      Selected: {job.selected_simulation.replace('simulation', 'Result ')}
-                    </p>
-                  )}
+                  <p className="job-view-type">
+                    View: {job.view_type?.toUpperCase() || 'N/A'}
+                  </p>
                 </div>
 
                 <div className="job-actions">

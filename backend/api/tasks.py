@@ -92,84 +92,49 @@ def process_image_generation(self, job_id):
         mode = "dev" if os.getenv('ML_MODEL', 'sdxl') == 'sd21' else "prod"
         num_steps = PROMPTS.get(mode, {}).get("inference_steps", 20)
 
+        # Get view type from job (rear or side)
+        view_type = job.view_type or 'rear'
+
         # Create progress callback
-        def progress_callback(step, total_steps, view_name):
+        def progress_callback(step, total_steps):
             send_progress_update(user_id, job_id, {
-                'view': view_name,
+                'view': view_type,
                 'step': step,
                 'total_steps': total_steps,
                 'percentage': int((step / total_steps) * 100)
             })
 
-        # ========== Generate REAR view ==========
-        logger.info(f"[Job {job_id}] Generating rear view...")
+        # ========== Generate simulation ==========
+        logger.info(f"[Job {job_id}] Generating {view_type} view...")
         send_progress_update(user_id, job_id, {
-            'view': 'rear',
+            'view': view_type,
             'step': 0,
             'total_steps': num_steps,
             'percentage': 0,
-            'message': 'Starting rear view generation...'
+            'message': f'Starting {view_type} view generation...'
         })
 
-        rear_image = ml_service.generate_image(
+        simulation_image = ml_service.generate_image(
             image=original_image,
             region=job.region,
             scenario=job.scenario,
-            view="rear",
+            view=view_type,
             message=job.message or '',
             num_inference_steps=num_steps,
             guidance_scale=7.5,
-            progress_callback=lambda step, total: progress_callback(step, total, 'rear')
+            progress_callback=progress_callback
         )
 
-        # Save rear view immediately
-        rear_buffer = io.BytesIO()
-        rear_image.save(rear_buffer, format='JPEG', quality=95)
-        rear_buffer.seek(0)
-        job.simulation1_image.save(
-            f'simulations/{job_id}_rear.jpg',
-            ContentFile(rear_buffer.read()),
-            save=True  # Save to DB immediately
-        )
-        logger.info(f"[Job {job_id}] ✓ Rear view saved")
-
-        # Send update with rear image available
-        job.refresh_from_db()
-        job_data = JobSerializer(job).data
-        job_data['rear_complete'] = True
-        send_job_update_via_websocket(user_id, job_data)
-
-        # ========== Generate SIDE view ==========
-        logger.info(f"[Job {job_id}] Generating side view...")
-        send_progress_update(user_id, job_id, {
-            'view': 'side',
-            'step': 0,
-            'total_steps': num_steps,
-            'percentage': 0,
-            'message': 'Starting side view generation...'
-        })
-
-        side_image = ml_service.generate_image(
-            image=original_image,
-            region=job.region,
-            scenario=job.scenario,
-            view="side",
-            message=job.message or '',
-            num_inference_steps=num_steps,
-            guidance_scale=7.5,
-            progress_callback=lambda step, total: progress_callback(step, total, 'side')
-        )
-
-        # Save side view
-        side_buffer = io.BytesIO()
-        side_image.save(side_buffer, format='JPEG', quality=95)
-        side_buffer.seek(0)
-        job.simulation2_image.save(
-            f'simulations/{job_id}_side.jpg',
-            ContentFile(side_buffer.read()),
+        # Save simulation image
+        image_buffer = io.BytesIO()
+        simulation_image.save(image_buffer, format='JPEG', quality=95)
+        image_buffer.seek(0)
+        job.simulation_image.save(
+            f'simulations/{job_id}_{view_type}.jpg',
+            ContentFile(image_buffer.read()),
             save=True
         )
-        logger.info(f"[Job {job_id}] ✓ Side view saved")
+        logger.info(f"[Job {job_id}] ✓ {view_type.capitalize()} view saved")
 
         # Mark as completed
         job.status = 'completed'
@@ -178,7 +143,6 @@ def process_image_generation(self, job_id):
         # Send final update
         job.refresh_from_db()
         job_data = JobSerializer(job).data
-        job_data['side_complete'] = True
         send_job_update_via_websocket(user_id, job_data)
 
         logger.info(f"[Job {job_id}] ✓ Successfully completed")

@@ -71,25 +71,19 @@ class Job(models.Model):
         ('projection-level-3', 'Projection Level 3'),
     ]
 
-    SELECTION_CHOICES = [
-        (None, 'None Selected'),
-        ('simulation1', 'Simulation 1'),
-        ('simulation2', 'Simulation 2'),
+    VIEW_TYPE_CHOICES = [
+        ('rear', 'Rear View'),
+        ('side', 'Side View'),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='jobs')
     region = models.CharField(max_length=50, choices=REGION_CHOICES, default='gluteal')
     scenario = models.CharField(max_length=50, choices=SCENARIO_CHOICES, default='projection-level-1')
+    view_type = models.CharField(max_length=20, choices=VIEW_TYPE_CHOICES, default='rear')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='queued')
     message = models.TextField(blank=True, null=True)
 
-    # User selection and favorites
-    selected_simulation = models.CharField(
-        max_length=20,
-        blank=True,
-        null=True,
-        help_text="Which simulation result the user selected as best"
-    )
+    # User favorites
     is_favorite = models.BooleanField(
         default=False,
         help_text="Whether user marked this job as favorite"
@@ -100,13 +94,7 @@ class Job(models.Model):
         upload_to='originals/',
         storage=media_storage
     )
-    simulation1_image = models.ImageField(
-        upload_to='simulations/',
-        storage=media_storage,
-        blank=True,
-        null=True
-    )
-    simulation2_image = models.ImageField(
+    simulation_image = models.ImageField(
         upload_to='simulations/',
         storage=media_storage,
         blank=True,

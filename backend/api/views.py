@@ -236,37 +236,12 @@ class JobViewSet(viewsets.ModelViewSet):
         # Delete images from storage
         if instance.original_image:
             instance.original_image.delete(save=False)
-        if instance.simulation1_image:
-            instance.simulation1_image.delete(save=False)
-        if instance.simulation2_image:
-            instance.simulation2_image.delete(save=False)
+        if instance.simulation_image:
+            instance.simulation_image.delete(save=False)
 
         # Delete the job record
         instance.delete()
         logger.info(f"Job {instance.id} deleted by user {instance.user.username}")
-
-    @action(detail=True, methods=['post'])
-    def select(self, request, pk=None):
-        """
-        Select which simulation is the best
-        POST /api/jobs/:id/select
-        Body: {"selection": "simulation1" | "simulation2"}
-        """
-        job = self.get_object()
-        selection = request.data.get('selection')
-
-        if selection not in ['simulation1', 'simulation2']:
-            return Response({
-                'error': 'Selection must be either "simulation1" or "simulation2"'
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        job.selected_simulation = selection
-        job.save()
-
-        return Response({
-            'message': f'Selected {selection}',
-            'job': JobSerializer(job, context={'request': request}).data
-        })
 
     @action(detail=True, methods=['post'])
     def favorite(self, request, pk=None):

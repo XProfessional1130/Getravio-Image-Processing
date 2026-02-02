@@ -161,13 +161,12 @@ export interface Job {
   id: string;
   region: string;
   scenario: string;
+  view_type: 'rear' | 'side';
   status: 'draft' | 'queued' | 'processing' | 'completed' | 'failed';
   message?: string;
   error_message?: string;
   original_image_url?: string;
-  simulation1_url?: string;
-  simulation2_url?: string;
-  selected_simulation?: 'simulation1' | 'simulation2';
+  simulation_url?: string;
   is_favorite: boolean;
   created_at: string;
   updated_at: string;
@@ -248,12 +247,6 @@ export const jobAPI = {
 
   toggleFavorite: async (id: string): Promise<{ message: string; is_favorite: boolean; job: Job }> => {
     const response = await api.post(`/jobs/${id}/favorite/`);
-    return response.data;
-  },
-
-  // Result selection
-  selectResult: async (id: string, selection: 'simulation1' | 'simulation2'): Promise<{ message: string; job: Job }> => {
-    const response = await api.post(`/jobs/${id}/select/`, { selection });
     return response.data;
   },
 };
