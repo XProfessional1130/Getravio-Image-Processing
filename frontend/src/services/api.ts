@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://127.0.0.1:8000/api';
+// const API_BASE_URL = 'http://127.0.0.1:8000/api';
+const API_BASE_URL = 'http://ec2-3-238-119-77.compute-1.amazonaws.com:8000/api';
 
 // Helper function to get CSRF token from cookies
 function getCookie(name: string): string | null {
@@ -94,7 +95,33 @@ export interface User {
   email: string;
   first_name?: string;
   last_name?: string;
+  is_superuser?: boolean;
+  is_active?: boolean;
   profile?: UserProfile;
+}
+
+export interface AdminUser extends User {
+  date_joined: string;
+  last_login: string | null;
+  job_count: number;
+}
+
+export interface AdminUserCreate {
+  username: string;
+  email: string;
+  password: string;
+  first_name?: string;
+  last_name?: string;
+  is_active?: boolean;
+}
+
+export interface AdminUserUpdate {
+  username?: string;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  is_active?: boolean;
+  password?: string;
 }
 
 export interface ProfileUpdateData {
@@ -247,6 +274,46 @@ export const jobAPI = {
 
   toggleFavorite: async (id: string): Promise<{ message: string; is_favorite: boolean; job: Job }> => {
     const response = await api.post(`/jobs/${id}/favorite/`);
+    return response.data;
+  },
+};
+
+// Admin API calls (superuser only)
+export const adminAPI = {
+  // Get all users
+  getUsers: async (search?: string): Promise<AdminUser[]> => {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    const response = await api.get(`/admin/users/?${params.toString()}`);
+    return response.data;
+  },
+
+  // Create a new user
+  createUser: async (data: AdminUserCreate): Promise<AdminUser> => {
+    const response = await api.post('/admin/users/create/', data);
+    return response.data;
+  },
+
+  // Get user details
+  getUser: async (id: number): Promise<AdminUser> => {
+    const response = await api.get(`/admin/users/${id}/`);
+    return response.data;
+  },
+
+  // Update user
+  updateUser: async (id: number, data: AdminUserUpdate): Promise<AdminUser> => {
+    const response = await api.patch(`/admin/users/${id}/`, data);
+    return response.data;
+  },
+
+  // Delete user
+  deleteUser: async (id: number): Promise<void> => {
+    await api.delete(`/admin/users/${id}/`);
+  },
+
+  // Get user's jobs
+  getUserJobs: async (id: number): Promise<Job[]> => {
+    const response = await api.get(`/admin/users/${id}/jobs/`);
     return response.data;
   },
 };

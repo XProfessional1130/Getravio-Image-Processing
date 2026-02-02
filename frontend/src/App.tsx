@@ -8,12 +8,13 @@ import ImageComparison from "./components/ImageComparison";
 import JobHistory from "./components/JobHistory";
 import Profile from "./components/Profile";
 import ResultSelection from "./components/ResultSelection";
+import ClientManagement from "./components/ClientManagement";
 
 type AuthView = 'login' | 'register';
-type AppPage = 'upload' | 'history' | 'profile' | 'result';
+type AppPage = 'upload' | 'history' | 'profile' | 'result' | 'clients';
 
 function App() {
-  const { isAuthenticated, isLoading, login, register, logout } = useAuth();
+  const { isAuthenticated, isLoading, login, register, logout, user } = useAuth();
   const [authView, setAuthView] = useState<AuthView>('login');
   const [currentPage, setCurrentPage] = useState<AppPage>('upload');
   const [currentJob, setCurrentJob] = useState<Job | null>(null);
@@ -251,6 +252,18 @@ function App() {
               >
                 History
               </button>
+              {user?.is_superuser && (
+                <button
+                  onClick={() => setCurrentPage('clients')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                    currentPage === 'clients'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-gray-700 hover:bg-blue-50'
+                  }`}
+                >
+                  Clients
+                </button>
+              )}
               <button
                 onClick={() => setCurrentPage('profile')}
                 className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
@@ -303,6 +316,18 @@ function App() {
             >
               Profile
             </button>
+            {user?.is_superuser && (
+              <button
+                onClick={() => setCurrentPage('clients')}
+                className={`flex-1 px-3 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+                  currentPage === 'clients'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-700 hover:bg-blue-50'
+                }`}
+              >
+                Clients
+              </button>
+            )}
           </nav>
         </header>
 
@@ -336,6 +361,10 @@ function App() {
 
           {currentPage === 'profile' && (
             <Profile />
+          )}
+
+          {currentPage === 'clients' && user?.is_superuser && (
+            <ClientManagement />
           )}
 
           {currentPage === 'result' && selectedJob && (

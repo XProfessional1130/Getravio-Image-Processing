@@ -21,7 +21,62 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_superuser', 'is_active', 'profile']
+
+
+class AdminUserSerializer(serializers.ModelSerializer):
+    """Serializer for admin user management"""
+
+    profile = UserProfileSerializer(read_only=True)
+    job_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'username', 'email', 'first_name', 'last_name',
+            'is_superuser', 'is_active', 'date_joined', 'last_login',
+            'profile', 'job_count'
+        ]
+        read_only_fields = ['id', 'date_joined', 'last_login', 'job_count']
+
+    def get_job_count(self, obj):
+        return obj.jobs.count() if hasattr(obj, 'jobs') else 0
+
+
+class AdminUserCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating users by admin"""
+
+    password = serializers.CharField(write_only=True, min_length=6)
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'password', 'first_name', 'last_name', 'is_active']
+
+    def create(self, validated_data):
+        password = validated_data.pop('password')
+        user = User(**validated_data)
+        user.set_password(password)
+        user.save()
+        return user
+
+
+class AdminUserUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating users by admin"""
+
+    password = serializers.CharField(write_only=True, min_length=6, required=False, allow_blank=True)
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'first_name', 'last_name', 'is_active', 'password']
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if password:
+            instance.set_password(password)
+        instance.save()
+        return instance
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
