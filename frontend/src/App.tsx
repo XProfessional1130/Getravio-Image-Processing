@@ -134,10 +134,8 @@ function App() {
       // Submit to backend API
       const createdJob = await jobAPI.createJob(formData);
 
-      // Set current job and switch to result view
+      // Set current job but stay on upload page to show progress
       setCurrentJob(createdJob);
-      setSelectedJob(createdJob);
-      setCurrentPage('result');
 
       console.log('Job created successfully:', createdJob);
 
