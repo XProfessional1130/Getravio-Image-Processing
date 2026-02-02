@@ -157,7 +157,11 @@ function ClientManagement({ onViewUserJobs }: ClientManagementProps) {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
+                <tr
+                  key={user.id}
+                  className="hover:bg-blue-50 cursor-pointer transition-colors"
+                  onClick={() => onViewUserJobs && onViewUserJobs(user.id, user.username)}
+                >
                   <td className="px-4 py-3">
                     <div>
                       <div className="font-medium text-gray-800">{user.username}</div>
@@ -177,7 +181,7 @@ function ClientManagement({ onViewUserJobs }: ClientManagementProps) {
                   </td>
                   <td className="px-4 py-3">
                     <button
-                      onClick={() => handleToggleActive(user)}
+                      onClick={(e) => { e.stopPropagation(); handleToggleActive(user); }}
                       className={`px-2 py-1 rounded-full text-xs font-medium ${
                         user.is_active
                           ? 'bg-green-100 text-green-700'
@@ -190,22 +194,14 @@ function ClientManagement({ onViewUserJobs }: ClientManagementProps) {
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <button
-                        onClick={() => openEditModal(user)}
+                        onClick={(e) => { e.stopPropagation(); openEditModal(user); }}
                         className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
                       >
                         Edit
                       </button>
-                      {onViewUserJobs && (
-                        <button
-                          onClick={() => onViewUserJobs(user.id, user.username)}
-                          className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                        >
-                          Jobs
-                        </button>
-                      )}
                       {!user.is_superuser && (
                         <button
-                          onClick={() => handleDeleteUser(user)}
+                          onClick={(e) => { e.stopPropagation(); handleDeleteUser(user); }}
                           className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
                         >
                           Delete
