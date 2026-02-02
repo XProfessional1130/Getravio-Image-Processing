@@ -12,7 +12,7 @@ import ClientManagement from "./components/ClientManagement";
 import "./components/JobHistory.css";
 
 type AuthView = 'login' | 'register';
-type AppPage = 'upload' | 'history' | 'profile' | 'result' | 'clients' | 'client-jobs';
+type AppPage = 'upload' | 'history' | 'profile' | 'result' | 'clients' | 'client-jobs' | 'client-job-detail';
 
 function App() {
   const { isAuthenticated, isLoading, login, register, logout, user } = useAuth();
@@ -24,6 +24,7 @@ function App() {
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const [selectedClient, setSelectedClient] = useState<{ id: number; username: string } | null>(null);
   const [clientJobs, setClientJobs] = useState<Job[]>([]);
+  const [selectedClientJob, setSelectedClientJob] = useState<Job | null>(null);
 
   // WebSocket handler for real-time job updates
   const handleJobUpdate = useCallback((updatedJob: Job) => {
@@ -192,6 +193,19 @@ function App() {
     setCurrentPage('clients');
     setSelectedClient(null);
     setClientJobs([]);
+    setSelectedClientJob(null);
+  };
+
+  const handleViewClientJobDetail = (job: Job) => {
+    console.log('[App] handleViewClientJobDetail called with job:', job);
+    console.log('[App] selectedClient:', selectedClient);
+    setSelectedClientJob(job);
+    setCurrentPage('client-job-detail');
+  };
+
+  const handleBackToClientJobs = () => {
+    setCurrentPage('client-jobs');
+    setSelectedClientJob(null);
   };
 
   // Show loading spinner while checking authentication
@@ -263,7 +277,7 @@ function App() {
               >
                 Upload
               </button>
-              {!user?.is_superuser && (
+              {/* {!user?.is_superuser && ( */}
                 <button
                   onClick={() => setCurrentPage('history')}
                   className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
@@ -274,7 +288,7 @@ function App() {
                 >
                   History
                 </button>
-              )}
+              {/* )} */}
               {user?.is_superuser && (
                 <button
                   onClick={() => setCurrentPage('clients')}
@@ -357,6 +371,8 @@ function App() {
         </header>
 
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 py-6 sm:py-8 md:py-10">
+          {/* Debug info - remove later */}
+          {console.log('[App] Current state:', { currentPage, selectedClient, selectedClientJob: selectedClientJob?.id, isSuperuser: user?.is_superuser })}
           {/* Page Content */}
           {currentPage === 'upload' && (
             <div>
@@ -411,7 +427,7 @@ function App() {
               ) : (
                 <div className="jobs-grid">
                   {clientJobs.map((job) => (
-                    <div key={job.id} className="job-card">
+                    <div key={job.id} className="job-card" style={{ cursor: 'pointer' }} onClick={() => handleViewClientJobDetail(job)}>
                       <div className="job-image">
                         {job.original_image_url ? (
                           <img src={job.original_image_url} alt="Original" />
@@ -436,21 +452,127 @@ function App() {
                           </p>
                         </div>
 
-                        {job.simulation_url && (
-                          <div className="mt-2 pt-2 border-t border-gray-100">
-                            <p className="text-xs text-gray-500 mb-1">Simulation Result:</p>
-                            <img
-                              src={job.simulation_url}
-                              alt="Simulation"
-                              className="w-full h-24 object-cover rounded"
-                            />
-                          </div>
-                        )}
+                        <div className="job-actions">
+                          <button className="view-btn" onClick={(e) => { e.stopPropagation(); handleViewClientJobDetail(job); }}>
+                            View Details
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {currentPage === 'client-job-detail' && user?.is_superuser && selectedClientJob && selectedClient && (
+            <div>
+              {console.log('[App] Rendering client-job-detail page', { selectedClientJob, selectedClient })}
+              <button
+                onClick={handleBackToClientJobs}
+                className="mb-4 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-all duration-200"
+              >
+                &larr; Back to {selectedClient.username}'s Jobs
+              </button>
+
+              <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-xl p-6">
+                {/* Job Info Header */}
+                <div className="mb-6 pb-4 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-800">
+                        {selectedClientJob.scenario.replace(/-/g, ' ')}
+                      </h2>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Region: {selectedClientJob.region} | View: {selectedClientJob.view_type?.toUpperCase() || 'N/A'}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Created: {new Date(selectedClientJob.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        selectedClientJob.status === 'completed'
+                          ? 'bg-green-100 text-green-700'
+                          : selectedClientJob.status === 'failed'
+                          ? 'bg-red-100 text-red-700'
+                          : selectedClientJob.status === 'processing'
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}>
+                        {selectedClientJob.status}
+                      </span>
+                      {selectedClientJob.is_favorite && (
+                        <span className="text-yellow-500 text-xl">★</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Images Side by Side */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Original Image */}
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-semibold text-gray-700 text-center">Original Image</h3>
+                    <div className="relative bg-gray-100 rounded-xl overflow-hidden aspect-[3/4] flex items-center justify-center">
+                      {selectedClientJob.original_image_url ? (
+                        <img
+                          src={selectedClientJob.original_image_url}
+                          alt="Original"
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <p className="text-gray-400">No original image</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Simulation Image */}
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-semibold text-gray-700 text-center">Simulation Result</h3>
+                    <div className="relative bg-gray-100 rounded-xl overflow-hidden aspect-[3/4] flex items-center justify-center">
+                      {selectedClientJob.simulation_url ? (
+                        <img
+                          src={selectedClientJob.simulation_url}
+                          alt="Simulation"
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <div className="text-center text-gray-400">
+                          {selectedClientJob.status === 'processing' ? (
+                            <div>
+                              <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3"></div>
+                              <p>Processing...</p>
+                            </div>
+                          ) : selectedClientJob.status === 'failed' ? (
+                            <p className="text-red-400">Generation failed</p>
+                          ) : (
+                            <p>No simulation yet</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Message if any */}
+                {selectedClientJob.message && (
+                  <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium">Message:</span> {selectedClientJob.message}
+                    </p>
+                  </div>
+                )}
+
+                {/* Error message if failed */}
+                {selectedClientJob.status === 'failed' && selectedClientJob.error_message && (
+                  <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-200">
+                    <p className="text-sm text-red-600">
+                      <span className="font-medium">Error:</span> {selectedClientJob.error_message}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
