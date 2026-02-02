@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { adminAPI, AdminUser, AdminUserCreate } from '../services/api';
 
 interface ClientManagementProps {
-  onViewUserJobs?: (userId: number) => void;
+  onViewUserJobs?: (userId: number, username: string) => void;
 }
 
 function ClientManagement({ onViewUserJobs }: ClientManagementProps) {
@@ -197,7 +197,7 @@ function ClientManagement({ onViewUserJobs }: ClientManagementProps) {
                       </button>
                       {onViewUserJobs && (
                         <button
-                          onClick={() => onViewUserJobs(user.id)}
+                          onClick={() => onViewUserJobs(user.id, user.username)}
                           className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
                         >
                           Jobs

@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useAuth } from "./context/AuthContext";
-import { jobAPI, Job } from "./services/api";
+import { jobAPI, adminAPI, Job } from "./services/api";
 import { useJobWebSocket, ProgressData } from "./hooks/useJobWebSocket";
 import Login from "./components/Login";
 import Register from "./components/Register";
@@ -9,9 +9,10 @@ import JobHistory from "./components/JobHistory";
 import Profile from "./components/Profile";
 import ResultSelection from "./components/ResultSelection";
 import ClientManagement from "./components/ClientManagement";
+import "./components/JobHistory.css";
 
 type AuthView = 'login' | 'register';
-type AppPage = 'upload' | 'history' | 'profile' | 'result' | 'clients';
+type AppPage = 'upload' | 'history' | 'profile' | 'result' | 'clients' | 'client-jobs';
 
 function App() {
   const { isAuthenticated, isLoading, login, register, logout, user } = useAuth();
@@ -21,6 +22,8 @@ function App() {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [progress, setProgress] = useState<ProgressData | null>(null);
+  const [selectedClient, setSelectedClient] = useState<{ id: number; username: string } | null>(null);
+  const [clientJobs, setClientJobs] = useState<Job[]>([]);
 
   // WebSocket handler for real-time job updates
   const handleJobUpdate = useCallback((updatedJob: Job) => {
@@ -173,6 +176,24 @@ function App() {
     setProgress(null);
   };
 
+  const handleViewClientJobs = async (userId: number, username: string) => {
+    try {
+      const jobs = await adminAPI.getUserJobs(userId);
+      setSelectedClient({ id: userId, username });
+      setClientJobs(jobs);
+      setCurrentPage('client-jobs');
+    } catch (error) {
+      console.error('Failed to load client jobs:', error);
+      alert('Failed to load client jobs');
+    }
+  };
+
+  const handleBackToClients = () => {
+    setCurrentPage('clients');
+    setSelectedClient(null);
+    setClientJobs([]);
+  };
+
   // Show loading spinner while checking authentication
   if (isLoading) {
     return (
@@ -242,16 +263,18 @@ function App() {
               >
                 Upload
               </button>
-              <button
-                onClick={() => setCurrentPage('history')}
-                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  currentPage === 'history'
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-gray-700 hover:bg-blue-50'
-                }`}
-              >
-                History
-              </button>
+              {!user?.is_superuser && (
+                <button
+                  onClick={() => setCurrentPage('history')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                    currentPage === 'history'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-gray-700 hover:bg-blue-50'
+                  }`}
+                >
+                  History
+                </button>
+              )}
               {user?.is_superuser && (
                 <button
                   onClick={() => setCurrentPage('clients')}
@@ -296,16 +319,18 @@ function App() {
             >
               Upload
             </button>
-            <button
-              onClick={() => setCurrentPage('history')}
-              className={`flex-1 px-3 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
-                currentPage === 'history'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-gray-700 hover:bg-blue-50'
-              }`}
-            >
-              History
-            </button>
+            {!user?.is_superuser && (
+              <button
+                onClick={() => setCurrentPage('history')}
+                className={`flex-1 px-3 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+                  currentPage === 'history'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-700 hover:bg-blue-50'
+                }`}
+              >
+                History
+              </button>
+            )}
             <button
               onClick={() => setCurrentPage('profile')}
               className={`flex-1 px-3 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
@@ -364,7 +389,69 @@ function App() {
           )}
 
           {currentPage === 'clients' && user?.is_superuser && (
-            <ClientManagement />
+            <ClientManagement onViewUserJobs={handleViewClientJobs} />
+          )}
+
+          {currentPage === 'client-jobs' && user?.is_superuser && selectedClient && (
+            <div className="job-history-container">
+              <button
+                onClick={handleBackToClients}
+                className="mb-4 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-all duration-200"
+              >
+                &larr; Back to Clients
+              </button>
+              <div className="history-header">
+                <h1>Job History for {selectedClient.username}</h1>
+              </div>
+
+              {clientJobs.length === 0 ? (
+                <div className="empty-state">
+                  <p>No jobs found for this client</p>
+                </div>
+              ) : (
+                <div className="jobs-grid">
+                  {clientJobs.map((job) => (
+                    <div key={job.id} className="job-card">
+                      <div className="job-image">
+                        {job.original_image_url ? (
+                          <img src={job.original_image_url} alt="Original" />
+                        ) : (
+                          <div className="image-placeholder">No Image</div>
+                        )}
+                      </div>
+
+                      <div className="job-info">
+                        <div className="job-header">
+                          <span className={`status-badge ${job.status}`}>{job.status}</span>
+                          <span className={`favorite-btn ${job.is_favorite ? 'active' : ''}`}>
+                            {job.is_favorite ? '★' : '☆'}
+                          </span>
+                        </div>
+
+                        <div className="job-details">
+                          <p className="job-date">{new Date(job.created_at).toLocaleDateString()}</p>
+                          <p className="job-scenario">{job.scenario.replace(/-/g, ' ')}</p>
+                          <p className="job-view-type">
+                            View: {job.view_type?.toUpperCase() || 'N/A'}
+                          </p>
+                        </div>
+
+                        {job.simulation_url && (
+                          <div className="mt-2 pt-2 border-t border-gray-100">
+                            <p className="text-xs text-gray-500 mb-1">Simulation Result:</p>
+                            <img
+                              src={job.simulation_url}
+                              alt="Simulation"
+                              className="w-full h-24 object-cover rounded"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {currentPage === 'result' && selectedJob && (
