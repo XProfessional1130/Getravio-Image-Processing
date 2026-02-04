@@ -29,14 +29,22 @@ function App() {
   // WebSocket handler for real-time job updates
   const handleJobUpdate = useCallback((updatedJob: Job) => {
     console.log('[App] Received job update via WebSocket:', updatedJob);
+    console.log('[App] Current job ID:', currentJob?.id, 'Updated job ID:', updatedJob.id);
+
+    // Compare IDs as strings to avoid type mismatch issues
+    const currentJobId = String(currentJob?.id);
+    const updatedJobId = String(updatedJob.id);
+    const selectedJobId = String(selectedJob?.id);
 
     // Update current job if it matches
-    if (currentJob?.id === updatedJob.id) {
+    if (currentJob && currentJobId === updatedJobId) {
+      console.log('[App] Updating currentJob with WebSocket data');
       setCurrentJob(updatedJob);
     }
 
     // Update selected job if it matches
-    if (selectedJob?.id === updatedJob.id) {
+    if (selectedJob && selectedJobId === updatedJobId) {
+      console.log('[App] Updating selectedJob with WebSocket data');
       setSelectedJob(updatedJob);
     }
 
@@ -50,8 +58,12 @@ function App() {
   const handleProgressUpdate = useCallback((jobId: string, progressData: ProgressData) => {
     console.log('[App] Received progress update:', jobId, progressData);
 
+    // Compare IDs as strings to avoid type mismatch
+    const currentJobId = String(currentJob?.id);
+    const selectedJobId = String(selectedJob?.id);
+
     // Only update progress for the current job
-    if (currentJob?.id === jobId || selectedJob?.id === jobId) {
+    if (currentJobId === jobId || selectedJobId === jobId) {
       setProgress(progressData);
     }
   }, [currentJob?.id, selectedJob?.id]);
